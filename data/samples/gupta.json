@@ -39,14 +39,14 @@
       "name": "Indranil Gupta",
       "born": "1956",
       "photo": "/static/uploads/gupta/indranil.png",
-      "location": { "city": "New York", "region": "NY", "country": "USA", "lat": 40.7128, "lng": -74.006 }
+      "location": { "city": "Noida", "region": "Uttar Pradesh", "country": "India", "lat": 28.5355, "lng": 77.3910 }
     },
     {
       "id": "sharmistha",
       "name": "Sharmistha Gupta",
       "born": "1962",
       "photo": "/static/uploads/gupta/sharmistha.png",
-      "location": { "city": "London", "region": "England", "country": "UK", "lat": 51.5072, "lng": -0.1276 }
+      "location": { "city": "Noida", "region": "Uttar Pradesh", "country": "India", "lat": 28.5355, "lng": 77.3910 }
     },
 
     {
@@ -54,14 +54,14 @@
       "name": "Rumjhum Chatterjee",
       "born": "1960",
       "photo": "/static/uploads/gupta/rumjhum.png",
-      "location": { "city": "Bengaluru", "region": "Karnataka", "country": "India", "lat": 12.9716, "lng": 77.5946 }
+      "location": { "city": "Noida", "region": "Uttar Pradesh", "country": "India", "lat": 28.5355, "lng": 77.3910 }
     },
     {
       "id": "vinayak",
       "name": "Vinayak Chatterjee",
       "born": "1958",
       "photo": "/static/uploads/gupta/vinayak.png",
-      "location": { "city": "Dubai", "region": "Dubai", "country": "UAE", "lat": 25.2048, "lng": 55.2708 }
+      "location": { "city": "Noida", "region": "Uttar Pradesh", "country": "India", "lat": 28.5355, "lng": 77.3910 }
     },
 
     {
@@ -91,7 +91,7 @@
       "name": "Frank Runfola",
       "born": "1987",
       "photo": "/static/uploads/gupta/frank.png",
-      "location": { "city": "New York", "region": "NY", "country": "USA", "lat": 40.7128, "lng": -74.006 }
+      "location": { "city": "Charlotte", "region": "NC", "country": "USA", "lat": 35.2271, "lng": -80.8431 }
     },
 
     {
@@ -99,14 +99,14 @@
       "name": "Caleb Runfola",
       "born": "2016",
       "photo": "/static/uploads/gupta/caleb.png",
-      "location": { "city": "New York", "region": "NY", "country": "USA", "lat": 40.7128, "lng": -74.006 }
+      "location": { "city": "Charlotte", "region": "NC", "country": "USA", "lat": 35.2271, "lng": -80.8431 }
     },
     {
       "id": "adalina",
       "name": "Adalina Runfola",
       "born": "2018",
       "photo": "/static/uploads/gupta/adalina.png",
-      "location": { "city": "New York", "region": "NY", "country": "USA", "lat": 40.7128, "lng": -74.006 }
+      "location": { "city": "Charlotte", "region": "NC", "country": "USA", "lat": 35.2271, "lng": -80.8431 }
     },
 
     {
@@ -114,21 +114,21 @@
       "name": "Nayantara Kochhar",
       "born": "1986",
       "photo": "/static/uploads/gupta/nayantara.png",
-      "location": { "city": "Kolkata", "region": "West Bengal", "country": "India", "lat": 22.5726, "lng": 88.3639 }
+      "location": { "city": "London", "region": "England", "country": "UK", "lat": 51.5072, "lng": -0.1276 }
     },
     {
       "id": "shailesh",
       "name": "Shailesh Kochhar",
       "born": "1984",
       "photo": "/static/uploads/gupta/shailesh.png",
-      "location": { "city": "Kolkata", "region": "West Bengal", "country": "India", "lat": 22.5726, "lng": 88.3639 }
+      "location": { "city": "London", "region": "England", "country": "UK", "lat": 51.5072, "lng": -0.1276 }
     },
     {
       "id": "maahir",
       "name": "Maahir Kochhar",
       "born": "2022",
       "photo": "/static/uploads/gupta/maahir.png",
-      "location": { "city": "Kolkata", "region": "West Bengal", "country": "India", "lat": 22.5726, "lng": 88.3639 }
+      "location": { "city": "London", "region": "England", "country": "UK", "lat": 51.5072, "lng": -0.1276 }
     },
 
     {

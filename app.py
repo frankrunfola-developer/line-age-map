@@ -83,6 +83,8 @@ app = Flask(
     static_folder=str(APP_DIR / "static"),
 )
 
+
+app.config['MAPBOX_TOKEN'] = os.getenv('MAPBOX_TOKEN', '')
 app.secret_key = SECRET
 
 
@@ -539,7 +541,7 @@ def map_view():
             message="We’re polishing the map experience. For now, explore the Tree or Timeline."
         )
     sample_id = optional_sample_id(request.args.get("sample"))
-    return render_template("map.html", public_slug=None, sample_id=sample_id)
+    return render_template("map.html", public_slug=None, sample_id=sample_id, mapbox_token=app.config.get("MAPBOX_TOKEN",""))
 
 
 # -----------------------------

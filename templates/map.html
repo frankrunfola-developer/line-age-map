@@ -6,6 +6,8 @@
 {% block head %}
 {{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/map.css') }}">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -24,15 +26,20 @@
     {% endif %}
 
     <section class="mapShell" aria-label="Family Map">
-      <div id="mapRoot" class="mapRoot">
-        <div class="mapLegend">
-          <div class="mapLegendTitle">Locations</div>
-          <div class="mapLegendSub">Tap a country to zoom into regions and cities.</div>
-        </div>
+  <div class="mapStage">
+    <div class="mapHud">
+      <div class="mapHudTitle">Locations</div>
+      <div class="mapHudSub">Pinch/scroll to zoom. Tap a face for details.</div>
+    </div>
 
-        <div id="mapAccordion" class="mapAccordion" aria-live="polite"></div>
-      </div>
-    </section>
+    <div id="lmMap" class="lmMapCanvas" role="application" aria-label="Interactive map"></div>
+
+    <div class="mapAttribution">
+      <span class="mapAttributionDot"></span>
+      <span>Map</span>
+    </div>
+  </div>
+</section>
   </div>
 </div>
 {% endblock %}
@@ -56,16 +63,18 @@
 {# Background map image selection #}
 {% set sid = (sample_id or "")|lower %}
 {% if sid in ["stark", "lannister"] %}
-{% set MAP_IMG = url_for('static', filename='img/westeros-muted.png') %}
+{% set MAP_IMG = url_for('static', filename='img/westeros-apple.png') %}
 {% else %}
-{% set MAP_IMG = url_for('static', filename='img/world-muted.png') %}
+{% set MAP_IMG = url_for('static', filename='img/world-apple.png') %}
 {% endif %}
 
 <script>
   window.MAP_API_URL = "{{ MAP_API_URL }}";
   window.MAP_FAMILY_ID = "{{ MAP_FAMILY }}";
-  window.MAP_IMAGE_URL = "{{ MAP_IMG }}";
-</script>
+  window.MAPBOX_TOKEN = "{{ mapbox_token|default('') }}";
+  </script>
 
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script type="module" src="{{ url_for('static', filename='js/map.js') }}"></script>
 {% endblock %}

@@ -18,6 +18,24 @@
     radial-gradient(900px 520px at 90% 30%, rgba(245,230,206,.22), rgba(0,0,0,0));
 }
 
+/* Give the landing preview cards more runway */
+.landingPage .appFrameShell{
+  padding-left: 2px;
+  padding-right: 2px;
+}
+@media (max-width: 520px){
+  .landingPage .appFrameShell{
+    padding-left: 1px;
+    padding-right: 1px;
+  }
+}
+
+/* If a max-width is constraining the card, kill it on landing */
+.landingPage .appFrameCard{
+  width: 100%;
+  max-width: none;
+}
+
 .landingPage::before{
   content: "";
   position: fixed;
@@ -50,12 +68,39 @@
   z-index: 1;
 }
 
-/* Constrain landing content */
+/* ------------------------------------------------------------------
+   Landing layout
+   - Make landing full width so feature cards can be wider
+   - Constrain only text blocks for readability
+------------------------------------------------------------------- */
+
 .landingPage .landing{
-  width: min(1100px, calc(100% - (var(--page-pad) * 2)));
+  width: 100%;
   margin: 0 auto;
   padding: 18px 0 28px;
   text-align: center;
+}
+
+.landingPage .lmHero,
+.landingPage .lmSectionHead,
+.landingPage .lmCenterCta,
+.landingPage .lmMicroSub,
+.landingPage .lmTriptych{
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--page-pad);
+  padding-right: var(--page-pad);
+}
+
+/* Feature section can run wider than the text */
+.landingPage .lmFeatures{
+  margin-top: 14px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 /* -----------------------------
@@ -151,6 +196,20 @@
     0 16px 30px rgba(20,12,6,.14);
 }
 
+/* Hero logo */
+.landingPage .lmHeroLogoWrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  margin: 6px 0 10px;
+}
+.landingPage .lmHeroLogo{
+  width: min(240px, 86vw);
+  height: auto;
+  display:block;
+  filter: drop-shadow(0 10px 22px rgba(30,20,12,.16));
+}
+
 /* -----------------------------
    Section heading (ornamental rule)
 ------------------------------ */
@@ -195,7 +254,7 @@
   background-position: center;
   background-size: 320px 10px;
   opacity: .75;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='10' viewBox='0 0 320 10'%3E%3Cg fill='none' stroke='%237a5a3c' stroke-opacity='.5' stroke-width='1'%3E%3Cpath d='M0 5 H132'/%3E%3Cpath d='M188 5 H320'/%3E%3Cpath d='M160 1 L165 5 L160 9 L155 5 Z'/%3E%3Cpath d='M147 5 C151 1.8 155 1.8 160 5 C155 8.2 151 8.2 147 5 Z'/%3E%3Cpath d='M173 5 C169 1.8 165 1.8 160 5 C165 8.2 169 8.2 173 5 Z'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='10' viewBox='0 0 320 10'%3E%3Cg fill='none' stroke='%237a5a3c' stroke-opacity='.5' stroke-width='1'%3E%3Cpath d='M0 5 H132'/%3E%3Cpath d='M188 5 H320'/%3E%3Cpath d='M160 1 L165 5 L160 9 L155 5 Z'/%3E%3Cpath d='M147 5 C151 1.8 155 1.8 160 5 C155 8.2 151 8.2 147 5 Z'/%3E%3Cpath d='M173 5 C169 1.8 165 1.8 160 5 C165 8.2 169 8.2 173 5 Z'/%3E%3C/g%3E%3Csvg%3E");
 }
 
 /* -----------------------------
@@ -246,13 +305,13 @@
   }
 }
 
-.legacyCard {
+.legacyCard{
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
-.legacyCard h3 {
+.legacyCard h3{
   font-size: clamp(1rem, 2.2vw, 1.25rem);
   white-space: nowrap;
   overflow: hidden;
@@ -287,6 +346,7 @@
   align-items:center;
   flex-wrap:nowrap;
 }
+
 .landingPage .legacyCard:hover{
   transform: translateY(-2px);
   box-shadow:
@@ -345,7 +405,6 @@
   font-size: clamp(0.72rem, 1.8vw, 0.9rem);
 }
 
-/* if you have icons or extra padding on mobile, keep it tight */
 @media (max-width: 420px){
   .legacyCard .cardActions{ gap:6px; }
 }
@@ -379,7 +438,6 @@
   filter: contrast(1.05) saturate(1.05);
 }
 
-/* Typography (Family name: always 1 line + auto scales down) */
 .landingPage .legacyName{
   margin: 0;
   font-family: var(--serif);
@@ -415,7 +473,6 @@
   box-sizing: border-box;
 }
 
-/* Buttons: parchment texture + soft emboss */
 .landingPage .legacyBtn{
   flex: 1 1 0;
   min-width: 0;
@@ -541,33 +598,34 @@
    Feature cards (Tree / Timeline / Map)
 ------------------------------------------------------------------- */
 
-.landingPage .lmFeatures{
-  margin-top: 14px;
-}
-
 .landingPage .lmFeatureGrid{
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: auto;
-  gap: 12px;
+  gap: 8px;
+  width: 100%;
 }
 
 .landingPage .lmFeatureCard{
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: 4fr 1fr;
+
   text-decoration: none;
   color: inherit;
-  border: 1px solid rgba(92,70,50,.22);
-  border-radius: 16px;
+  border: 1px solid rgba(92,70,50,.20);
+  border-radius: 18px;
   overflow: hidden;
-  background: rgba(255,255,255,.45);
-  height: clamp(300px, 74vw, 380px);
-  box-shadow: 0 10px 30px rgba(40,25,15,.08);
+  background: rgba(255,255,255,.48);
+
+  height: clamp(300px, 46vw, 420px);
+
+  box-shadow: 0 8px 18px rgba(40,25,15,.09);
+  transition: transform .14s ease, box-shadow .14s ease;
 }
 
 .landingPage .lmFeatureCard:hover{
   transform: translateY(-1px);
-  box-shadow: 0 14px 36px rgba(40,25,15,.12);
+  box-shadow: 0 14px 30px rgba(40,25,15,.11);
 }
 
 .landingPage .lmFeatureMedia{
@@ -575,13 +633,15 @@
   height: 100%;
   background: rgba(245,239,230,.55);
   position: relative;
+  overflow: hidden;
 }
 
-.landingPage .lmFeatureImg{
-  display: block;
+.landingPage .lmFeatureViewport{
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  overflow: hidden;
+  position: relative;
+  border-radius: 18px 18px 0 0;
 }
 
 .landingPage .lmFeatureFrame{
@@ -589,54 +649,62 @@
   height: calc(100% / var(--lm-preview-scale, 1));
   display: block;
   border: 0;
-  pointer-events: none; /* allow click-through to the card link */
+  pointer-events: none;
   transform: scale(var(--lm-preview-scale, 1));
   transform-origin: 0 0;
 }
 
-
-.landingPage .lmFeatureViewport{
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  position: relative;
-}
-
-/* Preview scaling: shrink the embedded page so more content fits. */
+/* Preview scaling */
 .landingPage .lmFeatureCard{ --lm-preview-scale: .74; }
 .landingPage .lmFeatureCard--tree{ --lm-preview-scale: .42; }
 .landingPage .lmFeatureCard--timeline{ --lm-preview-scale: .66; }
 .landingPage .lmFeatureCard--map{ --lm-preview-scale: .76; }
 
-@media (max-width: 520px){
-  .landingPage .lmFeatureCard{ --lm-preview-scale: .68; }
-  .landingPage .lmFeatureCard--tree{ --lm-preview-scale: .46; }
-  .landingPage .lmFeatureCard--timeline{ --lm-preview-scale: .56; }
-  .landingPage .lmFeatureCard--map{ --lm-preview-scale: .70; }
-}
-
-
 .landingPage .lmFeatureBody{
-  padding: 2px 6px;
+  padding: 2px 12px;
   text-align: center;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
+
+  background: rgba(255,255,255,.55);
+  position: relative;
 }
 
+.landingPage .lmFeatureBody::after{
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 6px;
+  height: 10px;
+  opacity: .35;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(92,70,50,.35), rgba(92,70,50,0) 62%),
+    linear-gradient(to right, rgba(92,70,50,0), rgba(92,70,50,.28), rgba(92,70,50,0));
+  background-repeat: no-repeat, no-repeat;
+  background-size: 10px 10px, 100% 1px;
+  background-position: center, center 7px;
+  pointer-events: none;
+}
 
 .landingPage .lmFeatureTitle{
+  font-weight: 800;
+  letter-spacing: .02em;
+  font-size: 15px;
+  line-height: 1.1;
+  margin: 0 0 4px;
   position: relative;
-  padding-bottom: 10px;
 }
 
 .landingPage .lmFeatureTitle::after{
   content:"";
   position:absolute;
   left: 50%;
-  bottom: 2px;
+  bottom: -6px;
   transform: translateX(-50%);
   width: min(180px, 78%);
   height: 10px;
@@ -647,70 +715,44 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='10' viewBox='0 0 220 10'%3E%3Cg fill='none' stroke='%237a5a3c' stroke-opacity='.55' stroke-width='1'%3E%3Cpath d='M2 5 H94'/%3E%3Cpath d='M126 5 H218'/%3E%3Cpath d='M108 1 C112 5 112 5 108 9 C104 5 104 5 108 1 Z'/%3E%3Cpath d='M112 3 C114 5 114 5 112 7 C110 5 110 5 112 3 Z'/%3E%3C/g%3E%3C/svg%3E");
 }
 
-
 .landingPage .lmFeatureDesc{
-  margin: 0;
-  opacity: .84;
+  font-size: 12.5px;
+  opacity: .92;
   line-height: 1.12;
-  font-size: .78rem;
-  max-width: 16ch;
 }
 
-.landingPage .lmFeatureCard--map{
-  grid-column: 1 / -1;
-}
-
-/* Keep the top row as 2 cards through small mobile sizes (down to 331px).
-   Below that, stack to avoid unreadable shrink. */
-@media (max-width: 330px){
-  .landingPage .lmFeatureGrid{
-    grid-template-columns: 1fr;
+@media (max-width: 520px){
+  .landingPage .lmFeatures{
+    padding-left: 6px;
+    padding-right: 6px;
   }
-  .landingPage .lmFeatureCard--map{
-    grid-column: auto;
+  .landingPage .lmFeatureGrid{ gap: 6px; }
+  .landingPage .lmFeatureTitle{ font-size: 14px; }
+  .landingPage .lmFeatureDesc{ font-size: 12px; }
+
+  .landingPage .lmFeatureCard{ --lm-preview-scale: .68; }
+  .landingPage .lmFeatureCard--tree{ --lm-preview-scale: .46; }
+  .landingPage .lmFeatureCard--timeline{ --lm-preview-scale: .56; }
+  .landingPage .lmFeatureCard--map{ --lm-preview-scale: .70; }
+}
+
+@media (max-width: 640px){
+  .landingPage .lmFeatureCard{
+    height: clamp(190px, 44vw, 240px);
+    border-radius: 14px;
+  }
+  .landingPage .lmFeatureViewport{ border-radius: 14px 14px 0 0; }
+
+  .landingPage .lmFeatureTitle{
+    font-size: 12px;
+  }
+  .landingPage .lmFeatureDesc{
+    font-size: 11px;
   }
 }
 
 /* ------------------------------------------------------------------
    Live previews inside landing feature cards
-------------------------------------------------------------------- */
-
-.landingPage .lmLiveFrame{
-  width: 100%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-}
-
-.landingPage .lmLiveStage{
-  --lmScale: .33;
-  --lmShiftX: 0;
-  --lmShiftY: 0;
-  width: 900px;
-  height: 560px;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(calc(-50% + (var(--lmShiftX) * 1px)), calc(-50% + (var(--lmShiftY) * 1px))) scale(var(--lmScale));
-  transform-origin: 50% 50%;
-}
-
-/* Tree */
-.landingPage .lmTreeCanvas{ width: 900px; height: 560px; }
-.landingPage .lmTreeSvg{ width: 900px; height: 560px; display:block; }
-
-/* Timeline */
-.landingPage .lmTlRoot{ width: 900px; height: 560px; position:relative; overflow:hidden; }
-.landingPage .lmTlStatus{ position:absolute; top:10px; left:12px; font-size:14px; opacity:.7; z-index:2; }
-.landingPage .lmTlSvg{ width:900px; height:560px; display:block; }
-.landingPage .lmTlCards{ position:absolute; inset:0; }
-
-/* Map */
-.landingPage .lmMapRoot{ width:900px; height:560px; position:relative; }
-.landingPage .lmMapAccordion{ position:absolute; inset:0; }
-
-/* ------------------------------------------------------------------
-   Live previews: run the real Tree / Timeline / Map renderers inside cards
 ------------------------------------------------------------------- */
 
 .landingPage .lmLiveFrame{
@@ -731,7 +773,7 @@
   transform-origin: center center;
 }
 
-/* Tree preview: keep it clean (no page chrome) */
+/* Tree preview */
 .landingPage #fitTreeBtn,
 .landingPage #treeMoreBtn,
 .landingPage .treeMoreWrap{
@@ -751,7 +793,7 @@
   display: block;
 }
 
-/* Timeline preview: hide top chrome and keep container tight */
+/* Timeline preview */
 .landingPage .tlTop,
 .landingPage .pillTitle{
   display: none !important;
@@ -781,7 +823,7 @@
   inset: 0;
 }
 
-/* Map preview: hide legend and clamp */
+/* Map preview */
 .landingPage .mapLegend,
 .landingPage .nav-family{
   display: none !important;
@@ -800,73 +842,20 @@
   inset: 0;
 }
 
-.landingPage .lmFeatureCard--map .lmFeatureMedia{ height: clamp(300px, 74vw, 380px); }
-
-
-/* --------------------------------
-   LANDING FEATURE CARDS (tighten)
------------------------------------ */
-.lmFeatures{
-  padding: 10px 0 0 !important;
-}
-.lmFeatureGrid{
-  gap: 14px !important;
+.landingPage .lmFeatureCard--map .lmFeatureMedia{
+  height: clamp(300px, 74vw, 380px);
 }
 
-.lmFeatureCard{
-  padding: 0 !important;
-  border-radius: 18px !important;
+/* Kill global page padding on landing so feature cards reach edges */
+.landingPage main.page{
+  padding-left: 6px !important;
+  padding-right: 6px !important;
 }
 
-.lmFeatureMedia{
-  border-radius: 18px 18px 0 0 !important;
-}
-
-.lmFeatureBody{
-  padding: 10px 12px !important;
-  line-height: 1.12 !important;
-}
-
-.lmFeatureTitle{
-  font-size: 15px !important;
-  margin: 0 0 4px !important;
-}
-
-.lmFeatureDesc{
-  font-size: 12.5px !important;
-  opacity: .92;
-}
-
-/* keep body ~20% */
-.lmFeatureCard{
-  height: clamp(300px, 46vw, 420px) !important;
-  display: grid !important;
-  grid-template-rows: 4fr 1fr !important;
-}
-
-.lmFeatureViewport{
-  border-radius: 18px 18px 0 0 !important;
-}
-
-/* Preview scaling — timeline a bit smaller */
-
+/* even tighter on very small screens */
 @media (max-width: 520px){
-  .lmFeatureGrid{ gap: 12px !important; }
-  .lmFeatureBody{ padding: 9px 10px !important; }
-  .lmFeatureTitle{ font-size: 14px !important; }
-  .lmFeatureDesc{ font-size: 12px !important; }
-}
-
-/* Hero logo */
-.lmHeroLogoWrap{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  margin: 6px 0 10px;
-}
-.lmHeroLogo{
-  width: min(240px, 86vw);
-  height: auto;
-  display:block;
-  filter: drop-shadow(0 10px 22px rgba(30,20,12,.16));
+  .landingPage main.page{
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+  }
 }

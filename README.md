@@ -216,4 +216,9 @@ lineagemap/
 
 ```bash
 find . -type f -name "*.Identifier" -delete
+<<<<<<< HEAD
 ```
+=======
+
+```
+>>>>>>> 48ec54b (added google map and one line of cards on landing)
