@@ -10,8 +10,8 @@ export const TREE_CFG = {
   layout: {
     minNodeGap: 20,
     rowTolerance: 22,
-    spouseGap: 30,
-    siblingGap: 26,
+    spouseGap: 20,
+    siblingGap: 5,
     clusterGap: 34,
     minPartnerGap: 30,
     coupleBarYRatio: 0.38,

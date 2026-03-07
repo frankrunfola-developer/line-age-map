@@ -608,7 +608,7 @@
 
 .landingPage .lmFeatureCard{
   display: grid;
-  grid-template-rows: 4fr 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
 
   text-decoration: none;
   color: inherit;
@@ -661,33 +661,52 @@
 .landingPage .lmFeatureCard--map{ --lm-preview-scale: .76; }
 
 .landingPage .lmFeatureBody{
-  padding: 2px 12px;
+  min-height: 76px;
+  padding: 10px 14px 12px;
   text-align: center;
 
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
 
-  background: rgba(255,255,255,.55);
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,.96), rgba(248,243,236,.94));
+  border-top: 1px solid rgba(121,92,63,.14);
   position: relative;
+}
+
+.landingPage .lmFeatureBody::before{
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  width: min(118px, 42%);
+  height: 8px;
+  opacity: .42;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='118' height='8' viewBox='0 0 118 8'%3E%3Cg fill='none' stroke='%23805f40' stroke-opacity='.52' stroke-width='1'%3E%3Cpath d='M1 4 H43'/%3E%3Cpath d='M75 4 H117'/%3E%3Cpath d='M55 1 C58 4 58 4 55 7 C52 4 52 4 55 1 Z'/%3E%3Cpath d='M63 1 C66 4 66 4 63 7 C60 4 60 4 63 1 Z'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
 }
 
 .landingPage .lmFeatureBody::after{
   content: "";
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 6px;
-  height: 10px;
-  opacity: .35;
+  left: 18px;
+  right: 18px;
+  bottom: 7px;
+  height: 8px;
+  opacity: .26;
   background:
-    radial-gradient(circle at 50% 50%, rgba(92,70,50,.35), rgba(92,70,50,0) 62%),
-    linear-gradient(to right, rgba(92,70,50,0), rgba(92,70,50,.28), rgba(92,70,50,0));
+    radial-gradient(circle at 50% 50%, rgba(92,70,50,.28), rgba(92,70,50,0) 62%),
+    linear-gradient(to right, rgba(92,70,50,0), rgba(92,70,50,.18), rgba(92,70,50,0));
   background-repeat: no-repeat, no-repeat;
-  background-size: 10px 10px, 100% 1px;
-  background-position: center, center 7px;
+  background-size: 8px 8px, 100% 1px;
+  background-position: center, center 5px;
   pointer-events: none;
 }
 
@@ -695,8 +714,8 @@
   font-weight: 800;
   letter-spacing: .02em;
   font-size: 15px;
-  line-height: 1.1;
-  margin: 0 0 4px;
+  line-height: 1.08;
+  margin: 8px 0 4px;
   position: relative;
 }
 
@@ -742,9 +761,14 @@
     border-radius: 14px;
   }
   .landingPage .lmFeatureViewport{ border-radius: 14px 14px 0 0; }
+  .landingPage .lmFeatureBody{
+    min-height: 60px;
+    padding: 8px 10px 10px;
+  }
 
   .landingPage .lmFeatureTitle{
     font-size: 12px;
+    margin-top: 6px;
   }
   .landingPage .lmFeatureDesc{
     font-size: 11px;
