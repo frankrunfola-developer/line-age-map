@@ -523,10 +523,25 @@ def index():
     )
 
 
+def _resolve_tree_api_url(public_slug: Optional[str], sample_id: Optional[str]) -> str:
+    if public_slug:
+        return f"/api/public/{public_slug}/tree"
+    if sample_id:
+        return f"/api/sample/{sample_id}/tree"
+    if get_current_user():
+        return "/api/tree/me"
+    return f"/api/sample/{DEFAULT_SAMPLE_ID}/tree"
+
+
 @app.get("/tree")
 def tree_view():
     sample_id = optional_sample_id(request.args.get("sample"))
-    return render_template("tree.html", public_slug=None, sample_id=sample_id)
+    return render_template(
+        "tree.html",
+        public_slug=None,
+        sample_id=sample_id,
+        tree_api_url=_resolve_tree_api_url(None, sample_id),
+    )
 
 
 @app.get("/timeline")

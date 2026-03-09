@@ -1,77 +1,37 @@
 {% extends "base.html" %}
 {% set active_page = "tree" %}
 
-{# Priority:
-1) public_slug
-2) sample_id (explicit)
-3) current_user
-4) demo_sample (session/query chosen)
-5) stark
-#}
-{% if public_slug %}
-{% set TREE_API_URL = "/api/public/" ~ public_slug ~ "/tree" %}
-{% elif request.args.get("sample") %}
-{% set TREE_API_URL = "/api/sample/" ~ request.args.get("sample")|lower ~ "/tree" %}
-{% elif sample_id %}
-{% set TREE_API_URL = "/api/sample/" ~ sample_id|lower ~ "/tree" %}
-{% elif current_user %}
-{% set TREE_API_URL = "/api/tree/me" %}
-{% elif demo_sample %}
-{% set TREE_API_URL = "/api/sample/" ~ demo_sample|lower ~ "/tree" %}
-{% else %}
-{% set TREE_API_URL = "/api/sample/stark/tree" %}
-{% endif %}
 {% block title %}LineAgeMap — Tree{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tree.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tree.css') }}?v={{ time.time() }}">
 {% endblock %}
 
 {% block content %}
-<div class="appFrameShell">
-  <div class="appFrameCard">
-
-    <section class="treeShell" aria-label="Family Tree">
+<div class="appFrameShell treePageShell">
+  <section class="appFrameCard treePageCard" aria-label="Family Tree">
+    <header class="treePageHeader">
       {% if request.args.get('embed') != '1' %}
       <div class="treeToolbar" role="group" aria-label="Tree controls">
-        <button id="treeMoreBtn" class="cta-btn treeToolbarBtn" type="button">See Full Tree</button>
-        <button id="fitTreeBtn" class="fit-btn treeToolbarBtn" type="button">Fit to screen</button>
+        <button id="treeDepthToggleBtn" class="treeToolbarBtn" type="button">See Full Tree</button>
+        <button id="fitTreeBtn" class="treeToolbarBtn" type="button">Fit to screen</button>
       </div>
       {% endif %}
+    </header>
 
-      <div
-        id="canvas"
-        class="treeCanvas"
-        data-tree-api-url="{{ TREE_API_URL }}">
-        <svg
-          id="treeSvg"
-          role="img"
-          aria-label="Family tree diagram"></svg>
-      </div>
-    </section>
-
-    <!-- “Above the fold” preview: first 2 layers. Button expands to full tree. -->
-  </div>
+    <div
+      id="treeCanvas"
+      class="treeCanvas"
+      data-tree-api-url="{{ tree_api_url or TREE_API_URL or '/api/sample/stark/tree' }}">
+      <svg id="treeSvg" role="img" aria-label="Family tree diagram"></svg>
+    </div>
+  </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<!-- Dagre MUST load before tree.js (tree.js reads window.dagre) -->
-<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
-
 <script>
-  window.TREE_API_URL = "{{ TREE_API_URL }}";
-  window.TREE_FAMILY_ID = "{{ request.args.get('sample','stark') }}";
-
-  window.TREE_DESCENDANTS_ONLY = true;
-  window.TREE_FULL_TREE = false;
-  window.TREE_PREVIEW_MODE = false;
-  window.TREE_PREVIEW_MOBILE_ONLY = false;
-  window.TREE_PREVIEW_DEPTH = 2;
-  window.TREE_PREVIEW_MAX = 18;
-  window.TREE_PREVIEW_MAX_GEN1 = 3;
+  window.TREE_API_URL = {{ (tree_api_url or TREE_API_URL or '/api/sample/stark/tree')|tojson }};
 </script>
-
 <script type="module" src="{{ url_for('static', filename='js/tree.js') }}?v={{ time.time() }}"></script>
-
 {% endblock %}

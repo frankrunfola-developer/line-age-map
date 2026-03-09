@@ -10,8 +10,8 @@ export const TREE_CFG = {
   layout: {
     minNodeGap: 20,
     rowTolerance: 22,
-    spouseGap: 20,
-    siblingGap: 5,
+    spouseGap: 30,
+    siblingGap: 26,
     clusterGap: 34,
     minPartnerGap: 30,
     coupleBarYRatio: 0.38,
@@ -25,11 +25,16 @@ export const TREE_CFG = {
   },
 
   sizing: {
-    CARD_W: 86,
-    CARD_H: 110,
-    CARD_R: 8,
-    PHOTO_W: 78,
-    PHOTO_H: 72,
-    BOTTOM_PANEL_H: 38,
+    CARD_W: 96,
+    CARD_H: 118,
+    CARD_R: 10,
+    PHOTO_W: 96,
+    PHOTO_H: 76,
+    BOTTOM_PANEL_H: 42,
+  },
+
+
+  view: {
+    stackLastGeneration: true,
   },
 };

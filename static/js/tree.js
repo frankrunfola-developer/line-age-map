@@ -1,5 +1,3 @@
-/* static/js/tree.js */
-
 import { TREE_CFG } from "./treeConfig.js";
 import { renderFamilyTree, fitTreeToScreen } from "./familyTree.js";
 
@@ -12,1082 +10,756 @@ function $(sel) {
   return document.querySelector(sel);
 }
 
+function safeText(v) {
+  return v == null ? "" : String(v);
+}
+
 function uniq(arr) {
   return Array.from(new Set(arr));
 }
 
-function byId(list) {
-  const m = new Map();
-  for (const it of list) m.set(it.id, it);
-  return m;
+function pairKey(a, b) {
+  const ids = [a, b].filter(Boolean).map(String).sort();
+  return ids.join("|") || "_";
 }
 
-function safeText(v) {
-  return (v == null ? "" : String(v));
-}
+function makePerson(raw) {
+  //console.log(JSON.stringify(raw, null, 2));
+  const birth = raw.birthDate ?? raw.birth_date ?? raw.birthYear ?? raw.birth_year ?? raw.birth ?? raw.born ?? null;
+  const death = raw.deathDate ?? raw.death_date ?? raw.deathYear ?? raw.death_year ?? raw.death ?? raw.died ?? null;
 
-function makePersonNode(p) {
-  return {
-    id: p.id,
-    kind: "person",
-    label: safeText(p.name || p.label || p.id),
-    gender: p.gender || null,
-    birthYear: p.birthYear || p.birth_year || null,
-    deathYear: p.deathYear || p.death_year || null,
-    photoUrl: p.photoUrl || p.photo_url || p.photo || null,
-  };
-}
-
-function unionKey(a, b) {
-  const x = a || "_";
-  const y = b || "_";
-  return x < y ? `u:${x}:${y}` : `u:${y}:${x}`;
-}
-
-function buildGraph(treeJson, { previewMode, previewDepth }) {
-  const people = Array.isArray(treeJson?.people) ? treeJson.people : [];
-  const rels = Array.isArray(treeJson?.relationships) ? treeJson.relationships : [];
-
-  const personNodes = [];
-  const peopleById = new Map();
-
-  for (const p of people) {
-    const node = makePersonNode(p);
-    personNodes.push(node);
-    peopleById.set(node.id, node);
+  const birthStr = birth ? String(birth) : "";
+  const deathStr = death ? String(death) : "";
+  //console.log("birthText="+birthText + " deathText="+deathText)
+  let yearsText = "";
+  if (birthStr || deathStr) {
+    yearsText = `(${birthStr}-${deathStr})`;
   }
 
-  const unions = new Map();        // unionId -> { id, kind:"union", parents:[...], childIds:Set }
-  const parentsByChild = new Map(); // childId -> Set(parentId)
+  return {
+    id: String(raw.id),
+    name: safeText(raw.name || raw.label || raw.id),
+    gender: raw.gender || null,
+    birth,
+    death,
+    yearsText,
+    raw,
+  };
+}
+function normalizeTree(treeJson) {
+  const people = Array.isArray(treeJson?.people) ? treeJson.people : [];
+  const relationships = Array.isArray(treeJson?.relationships) ? treeJson.relationships : [];
+
+  const peopleById = new Map();
+  for (const p of people) {
+    if (!p?.id) continue;
+    peopleById.set(String(p.id), makePerson(p));
+  }
 
   const ensurePerson = (id) => {
     if (!id) return null;
     const sid = String(id);
     if (!peopleById.has(sid)) {
-      const node = {
-        id: sid,
-        kind: "person",
-        label: sid,
-        gender: null,
-        birthYear: null,
-        deathYear: null,
-        photoUrl: null,
-      };
-      peopleById.set(sid, node);
-      personNodes.push(node);
+      peopleById.set(sid, makePerson({ id: sid, name: sid }));
     }
     return sid;
   };
 
-  const addParent = (childId, parentId) => {
-    const c = ensurePerson(childId);
-    const p = ensurePerson(parentId);
-    if (!c || !p) return;
-    if (!parentsByChild.has(c)) parentsByChild.set(c, new Set());
-    parentsByChild.get(c).add(p);
+  const parentSetByChild = new Map();
+  const spousePairs = [];
+
+  for (const rel of relationships) {
+    if (!rel) continue;
+
+    if (rel.type === "spouse" && rel.a && rel.b) {
+      const a = ensurePerson(rel.a);
+      const b = ensurePerson(rel.b);
+      if (a && b) spousePairs.push([a, b]);
+      continue;
+    }
+
+    if (rel.childId && rel.parentId) {
+      const child = ensurePerson(rel.childId);
+      const parent = ensurePerson(rel.parentId);
+      if (child && parent) {
+        if (!parentSetByChild.has(child)) parentSetByChild.set(child, new Set());
+        parentSetByChild.get(child).add(parent);
+      }
+      if (rel.otherParentId) {
+        const other = ensurePerson(rel.otherParentId);
+        if (child && other) {
+          if (!parentSetByChild.has(child)) parentSetByChild.set(child, new Set());
+          parentSetByChild.get(child).add(other);
+        }
+      }
+      continue;
+    }
+
+    if (rel.child && rel.parent) {
+      const child = ensurePerson(rel.child);
+      const parent = ensurePerson(rel.parent);
+      if (child && parent) {
+        if (!parentSetByChild.has(child)) parentSetByChild.set(child, new Set());
+        parentSetByChild.get(child).add(parent);
+      }
+    }
+  }
+
+  const familiesById = new Map();
+  const familyOrder = [];
+
+  function ensureFamily(parentIds, sourceOrder = familyOrder.length) {
+    const ids = uniq((parentIds || []).filter(Boolean).map(String)).slice(0, 2).sort();
+    const key = ids.join("|") || `single:${sourceOrder}`;
+    if (!familiesById.has(key)) {
+      familiesById.set(key, {
+        id: key,
+        parentIds: ids,
+        childIds: [],
+        order: sourceOrder,
+      });
+      familyOrder.push(key);
+    }
+    return familiesById.get(key);
+  }
+
+  for (const [childId, parentSet] of parentSetByChild.entries()) {
+    const parents = Array.from(parentSet).filter(Boolean).slice(0, 2).sort();
+    const fam = ensureFamily(parents);
+    if (!fam.childIds.includes(childId)) fam.childIds.push(childId);
+  }
+
+  for (const [a, b] of spousePairs) {
+    ensureFamily([a, b]);
+  }
+
+  const childToParentFamilyIds = new Map();
+  for (const fam of familiesById.values()) {
+    for (const childId of fam.childIds) {
+      if (!childToParentFamilyIds.has(childId)) childToParentFamilyIds.set(childId, []);
+      childToParentFamilyIds.get(childId).push(fam.id);
+    }
+  }
+
+  const familyIdsByParent = new Map();
+  for (const fam of familiesById.values()) {
+    for (const pid of fam.parentIds) {
+      if (!familyIdsByParent.has(pid)) familyIdsByParent.set(pid, []);
+      familyIdsByParent.get(pid).push(fam.id);
+    }
+  }
+
+  const familyWeightMemo = new Map();
+  function familyWeight(familyId, seen = new Set()) {
+    if (familyWeightMemo.has(familyId)) return familyWeightMemo.get(familyId);
+    if (seen.has(familyId)) return 0;
+    seen.add(familyId);
+    const fam = familiesById.get(familyId);
+    if (!fam) return 0;
+    let total = fam.childIds.length;
+    for (const childId of fam.childIds) {
+      const childHome = chooseHomeFamilyForPerson(childId, seen);
+      if (childHome) total += familyWeight(childHome, seen);
+    }
+    seen.delete(familyId);
+    familyWeightMemo.set(familyId, total);
+    return total;
+  }
+
+  const homeFamilyMemo = new Map();
+  function chooseHomeFamilyForPerson(personId, seen = new Set()) {
+    if (homeFamilyMemo.has(personId)) return homeFamilyMemo.get(personId);
+    const famIds = familyIdsByParent.get(personId) || [];
+    if (!famIds.length) {
+      homeFamilyMemo.set(personId, null);
+      return null;
+    }
+    let best = famIds[0];
+    let bestScore = -1;
+    for (const famId of famIds) {
+      const fam = familiesById.get(famId);
+      const childCount = fam?.childIds?.length || 0;
+      const score = (childCount * 1000) - (fam?.order || 0);
+      if (score > bestScore) {
+        bestScore = score;
+        best = famId;
+      }
+    }
+    homeFamilyMemo.set(personId, best);
+    return best;
+  }
+
+  const parentFamilyByPerson = new Map();
+  for (const personId of peopleById.keys()) {
+    const parentFamIds = childToParentFamilyIds.get(personId) || [];
+    if (parentFamIds.length) {
+      parentFamIds.sort((a, b) => {
+        const fa = familiesById.get(a);
+        const fb = familiesById.get(b);
+        return (fa?.order || 0) - (fb?.order || 0);
+      });
+      parentFamilyByPerson.set(personId, parentFamIds[0]);
+    } else {
+      parentFamilyByPerson.set(personId, null);
+    }
+  }
+
+  const familyIncoming = new Map();
+  for (const fam of familiesById.values()) familyIncoming.set(fam.id, 0);
+  for (const fam of familiesById.values()) {
+    for (const childId of fam.childIds) {
+      const childHome = chooseHomeFamilyForPerson(childId);
+      if (childHome && childHome !== fam.id && familiesById.has(childHome)) {
+        familyIncoming.set(childHome, (familyIncoming.get(childHome) || 0) + 1);
+      }
+    }
+  }
+
+  const rootFamilyIds = Array.from(familiesById.values())
+    .filter((fam) => (familyIncoming.get(fam.id) || 0) === 0)
+    .sort((a, b) => a.order - b.order)
+    .map((fam) => fam.id);
+
+  const orderedRootIds = rootFamilyIds.length ? rootFamilyIds : Array.from(familiesById.keys());
+
+  return {
+    peopleById,
+    familiesById,
+    orderedRootIds,
+    chooseHomeFamilyForPerson,
+    parentFamilyByPerson,
   };
+}
 
-  // Support both schemas:
-  //   { childId, parentId, otherParentId }
-  //   { child, parent }
-  for (const r of rels) {
-    if (!r) continue;
 
-    if (r.childId && r.parentId) {
-      addParent(r.childId, r.parentId);
-      if (r.otherParentId) addParent(r.childId, r.otherParentId);
-      continue;
-    }
+function buildRenderForest(model) {
+  const {
+    peopleById,
+    familiesById,
+    orderedRootIds,
+    chooseHomeFamilyForPerson,
+  } = model;
 
-    if (r.child && r.parent) {
-      addParent(r.child, r.parent);
-    }
-  }
+  const attachedFamilyIdsByHost = new Map();
+  const attachedFamilyIds = new Set();
 
-  // Build unions from child->parents
-  for (const [childId, pset] of parentsByChild.entries()) {
-    const ps = Array.from(pset).filter(Boolean).slice(0, 2);
-    const p1 = ps[0] || null;
-    const p2 = ps[1] || null;
-    const uId = unionKey(p1, p2);
-
-    if (!unions.has(uId)) {
-      unions.set(uId, {
-        id: uId,
-        kind: "union",
-        parents: uniq([p1, p2].filter(Boolean)),
-        childIds: new Set(),
-      });
-    }
-
-    unions.get(uId).childIds.add(childId);
-  }
-
-  // Force spouse unions to exist even if no children
-  for (const r of rels) {
-    if (!r || r.type !== "spouse" || !r.a || !r.b) continue;
-
-    const a = ensurePerson(r.a);
-    const b = ensurePerson(r.b);
-    const uId = unionKey(a, b);
-
-    if (!unions.has(uId)) {
-      unions.set(uId, {
-        id: uId,
-        kind: "union",
-        parents: uniq([a, b]),
-        childIds: new Set(),
-      });
-    }
-  }
-
-  let nodes = [
-    ...personNodes,
-    ...Array.from(unions.values()).map((u) => ({
-      id: u.id,
-      kind: "union",
-      parents: u.parents,
-    })),
-  ];
-
-  let links = [];
-  for (const u of unions.values()) {
-    for (const pId of u.parents) {
-      links.push({ sourceId: pId, targetId: u.id });
-    }
-    for (const cId of u.childIds) {
-      links.push({ sourceId: u.id, targetId: cId });
-    }
-  }
-
-  // Preview mode: keep descendants, but ALSO keep co-parents/spouses of visible unions
-  if (previewMode && previewDepth > 0) {
-    const childIds = new Set();
-    for (const [c] of parentsByChild.entries()) childIds.add(c);
-
-    const roots = personNodes.map((p) => p.id).filter((id) => !childIds.has(id));
-    const start = roots.length ? [roots[0]] : (personNodes[0] ? [personNodes[0].id] : []);
-    const keepPeople = new Set(start);
-    const q = start.map((id) => ({ id, depth: 0 }));
-
-    const parentToChildren = new Map();
-    for (const [c, pset] of parentsByChild.entries()) {
-      for (const p of pset) {
-        if (!parentToChildren.has(p)) parentToChildren.set(p, []);
-        parentToChildren.get(p).push(c);
+  for (const fam of familiesById.values()) {
+    let hostId = null;
+    for (const pid of fam.parentIds) {
+      const homeId = chooseHomeFamilyForPerson(pid);
+      if (homeId && homeId !== fam.id && familiesById.has(homeId)) {
+        hostId = homeId;
+        break;
       }
     }
+    if (hostId) {
+      attachedFamilyIds.add(fam.id);
+      if (!attachedFamilyIdsByHost.has(hostId)) attachedFamilyIdsByHost.set(hostId, []);
+      attachedFamilyIdsByHost.get(hostId).push(fam.id);
+    }
+  }
 
-    while (q.length) {
-      const cur = q.shift();
-      if (cur.depth >= previewDepth) continue;
+  const nodeMemo = new Map();
 
-      const kids = parentToChildren.get(cur.id) || [];
-      for (const k of kids) {
-        if (!keepPeople.has(k)) {
-          keepPeople.add(k);
-          q.push({ id: k, depth: cur.depth + 1 });
+  function buildLeafPerson(personId) {
+    return {
+      id: `person:${personId}`,
+      type: "person",
+      personId,
+      person: peopleById.get(personId),
+      children: [],
+      depth: 0,
+    };
+  }
+
+  function buildUnionChildren(familyId, trail, depth) {
+    const fam = familiesById.get(familyId);
+    if (!fam) return [];
+    const out = [];
+    for (const childId of fam.childIds) {
+      const childHome = chooseHomeFamilyForPerson(childId);
+      if (childHome && childHome !== familyId && !trail.has(childHome)) {
+        const childNode = buildFamilyNode(childHome, new Set(trail), depth + 1);
+        if (childNode) {
+          childNode.depth = depth + 1;
+          childNode.inboundPersonId = childId;
+          out.push(childNode);
+          continue;
         }
       }
+      const leaf = buildLeafPerson(childId);
+      leaf.depth = depth + 1;
+      out.push(leaf);
     }
-
-    const keepUnions = new Set();
-
-    for (const u of unions.values()) {
-      const childKept = Array.from(u.childIds).some((c) => keepPeople.has(c));
-      const parentKept = u.parents.some((p) => keepPeople.has(p));
-
-      if (childKept || parentKept) {
-        keepUnions.add(u.id);
-        for (const p of u.parents) keepPeople.add(p); // keep co-parents/spouses
-        for (const c of u.childIds) {
-          if (childKept) keepPeople.add(c);
-        }
-      }
-    }
-
-    nodes = nodes.filter((n) => (n.kind === "person" ? keepPeople.has(n.id) : keepUnions.has(n.id)));
-    const keepNodeIds = new Set(nodes.map((n) => n.id));
-    links = links.filter((l) => keepNodeIds.has(l.sourceId) && keepNodeIds.has(l.targetId));
+    return out;
   }
 
-  return { nodes, links };
-}
-
-function getPartnerMap(nodes, links) {
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const parentsByUnion = new Map();
-  const unionsByPerson = new Map();
-
-  for (const lk of links) {
-    const s = nodeMap.get(lk.sourceId);
-    const t = nodeMap.get(lk.targetId);
-    if (!s || !t) continue;
-
-    if (s.kind === "person" && t.kind === "union") {
-      if (!parentsByUnion.has(t.id)) parentsByUnion.set(t.id, []);
-      parentsByUnion.get(t.id).push(s.id);
-
-      if (!unionsByPerson.has(s.id)) unionsByPerson.set(s.id, []);
-      unionsByPerson.get(s.id).push(t.id);
-    }
-  }
-
-  const partnerMap = new Map(); // personId -> [{ unionId, partnerId }]
-  for (const [unionId, parentIds] of parentsByUnion.entries()) {
-    if (parentIds.length < 2) continue;
-
-    for (let i = 0; i < parentIds.length; i++) {
-      const selfId = parentIds[i];
-      const others = parentIds.filter((id) => id !== selfId);
-
-      if (!partnerMap.has(selfId)) partnerMap.set(selfId, []);
-      for (const partnerId of others) {
-        partnerMap.get(selfId).push({ unionId, partnerId });
-      }
-    }
-  }
-
-  return { partnerMap, parentsByUnion, unionsByPerson };
-}
-
-function layoutWithDagre(nodes, links) {
-  const dagreLib = window.dagre;
-  if (!dagreLib) throw new Error("dagre is missing (window.dagre not found)");
-
-  const g = new dagreLib.graphlib.Graph();
-
-  const cardW = cfgNum(TREE_CFG.sizing?.CARD_W, 86);
-  const cardH = cfgNum(TREE_CFG.sizing?.CARD_H, 110);
-
-  const rankdir = TREE_CFG.dagre?.rankdir || "TB";
-  const nodesep = cfgNum(TREE_CFG.dagre?.nodesep, Math.round(cardW * 1.05));
-  const ranksep = cfgNum(TREE_CFG.dagre?.ranksep, Math.round(cardH * 0.9));
-  const marginx = cfgNum(TREE_CFG.dagre?.marginx, 20);
-  const marginy = cfgNum(TREE_CFG.dagre?.marginy, 20);
-
-  g.setGraph({
-    rankdir,
-    nodesep,
-    ranksep,
-    marginx,
-    marginy,
-  });
-
-  g.setDefaultEdgeLabel(() => ({}));
-
-  for (const n of nodes) {
-    if (n.kind === "union") {
-      g.setNode(n.id, {
-        width: 10,
-        height: 10,
-      });
-    } else {
-      g.setNode(n.id, {
-        width: cardW,
-        height: cardH,
-      });
-    }
-  }
-
-  for (const lk of links) {
-    if (!lk?.sourceId || !lk?.targetId) continue;
-    if (!g.hasNode(lk.sourceId) || !g.hasNode(lk.targetId)) continue;
-    g.setEdge(lk.sourceId, lk.targetId);
-  }
-
-  dagreLib.layout(g);
-
-  const byNodeId = new Map(nodes.map((n) => [n.id, n]));
-
-  for (const id of g.nodes()) {
-    const pos = g.node(id);
-    const n = byNodeId.get(id);
-    if (!n || !pos) continue;
-
-    if (n.kind === "union") {
-      n.x = pos.x;
-      n.y = pos.y;
-    } else {
-      n.x = pos.x - cardW / 2;
-      n.y = pos.y - cardH / 2;
-    }
-  }
-}
-
-function centerChildrenUnderParents(nodes, links) {
-  const { CARD_W } = TREE_CFG.sizing;
-
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-
-  const outgoing = new Map();
-  for (const lk of links) {
-    if (!lk?.sourceId || !lk?.targetId) continue;
-    if (!outgoing.has(lk.sourceId)) outgoing.set(lk.sourceId, []);
-    outgoing.get(lk.sourceId).push(lk.targetId);
-  }
-
-  const unionChildren = new Map();
-  for (const lk of links) {
-    const src = nodeMap.get(lk.sourceId);
-    if (src?.kind === "union") {
-      if (!unionChildren.has(lk.sourceId)) unionChildren.set(lk.sourceId, []);
-      unionChildren.get(lk.sourceId).push(lk.targetId);
-    }
-  }
-
-  const unions = nodes
-    .filter((n) => n.kind === "union" && Number.isFinite(n.x) && Number.isFinite(n.y))
-    .sort((a, b) => (a.y - b.y) || (a.x - b.x));
-
-  function shiftSubtree(rootId, dx, visited = new Set()) {
-    const stack = [rootId];
-
-    while (stack.length) {
-      const id = stack.pop();
-      if (visited.has(id)) continue;
-      visited.add(id);
-
-      const n = nodeMap.get(id);
-      if (n) n.x += dx;
-
-      const kids = outgoing.get(id) || [];
-      for (const childId of kids) stack.push(childId);
-    }
-  }
-
-  for (const u of unions) {
-    const childIds = unionChildren.get(u.id) || [];
-    if (!childIds.length) continue;
-
-    const childCenters = [];
-
-    for (const childId of childIds) {
-      const child = nodeMap.get(childId);
-      if (!child || !Number.isFinite(child.x)) continue;
-
-      const cx = child.kind === "union" ? child.x : child.x + CARD_W / 2;
-      childCenters.push(cx);
-    }
-
-    if (!childCenters.length) continue;
-
-    const minX = Math.min(...childCenters);
-    const maxX = Math.max(...childCenters);
-    const desiredCenter = (minX + maxX) / 2;
-    const dx = u.x - desiredCenter;
-
-    if (Math.abs(dx) < 0.5) continue;
-
-    const visited = new Set();
-    for (const childId of childIds) {
-      shiftSubtree(childId, dx, visited);
-    }
-  }
-}
-
-
-function spreadMultiPartnerFamilies(nodes, links) {
-  const { CARD_W } = TREE_CFG.sizing;
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-
-  const minPartnerGap = cfgNum(
-    TREE_CFG.layout?.minPartnerGap,
-    cfgNum(TREE_CFG.layout?.spouseGap, CARD_W + 36)
-  );
-
-  const outgoing = new Map();
-  const unionsByPerson = new Map();
-  const parentsByUnion = new Map();
-
-  for (const lk of links) {
-    if (!lk?.sourceId || !lk?.targetId) continue;
-
-    if (!outgoing.has(lk.sourceId)) outgoing.set(lk.sourceId, []);
-    outgoing.get(lk.sourceId).push(lk.targetId);
-
-    const s = nodeMap.get(lk.sourceId);
-    const t = nodeMap.get(lk.targetId);
-    if (!s || !t) continue;
-
-    if (s.kind === "person" && t.kind === "union") {
-      if (!unionsByPerson.has(s.id)) unionsByPerson.set(s.id, []);
-      unionsByPerson.get(s.id).push(t.id);
-
-      if (!parentsByUnion.has(t.id)) parentsByUnion.set(t.id, []);
-      parentsByUnion.get(t.id).push(s.id);
-    }
-  }
-
-  function shiftSubtree(rootId, dx, visited = new Set()) {
-    const stack = [rootId];
-
-    while (stack.length) {
-      const id = stack.pop();
-      if (visited.has(id)) continue;
-      visited.add(id);
-
-      const n = nodeMap.get(id);
-      if (n) n.x += dx;
-
-      const kids = outgoing.get(id) || [];
-      for (const childId of kids) {
-        stack.push(childId);
-      }
-    }
-  }
-
-  function shiftPartnerFamily(partnerId, unionId, dx) {
-    const visited = new Set();
-
-    const partner = nodeMap.get(partnerId);
-    if (partner && !visited.has(partnerId)) {
-      partner.x += dx;
-      visited.add(partnerId);
-    }
-
-    const unionNode = nodeMap.get(unionId);
-    if (unionNode && !visited.has(unionId)) {
-      unionNode.x += dx;
-      visited.add(unionId);
-    }
-
-    const kids = outgoing.get(unionId) || [];
-    for (const childId of kids) {
-      shiftSubtree(childId, dx, visited);
-    }
-  }
-
-  function recenterUnion(unionId) {
-    const parentIds = parentsByUnion.get(unionId) || [];
-    if (parentIds.length < 2) return;
-
-    const parents = parentIds
-      .map((id) => nodeMap.get(id))
-      .filter(Boolean)
-      .sort((a, b) => a.x - b.x);
-
-    if (parents.length < 2) return;
-
-    const left = parents[0];
-    const right = parents[parents.length - 1];
-    const unionNode = nodeMap.get(unionId);
-    if (!unionNode) return;
-
-    const leftInner = left.x + CARD_W;
-    const rightInner = right.x;
-    unionNode.x = (leftInner + rightInner) / 2;
-  }
-
-  for (const [personId, unionIds] of unionsByPerson.entries()) {
-    const anchor = nodeMap.get(personId);
-    if (!anchor || unionIds.length < 2 || !Number.isFinite(anchor.x)) continue;
-
-    const partnerEntries = [];
-    const seen = new Set();
-
-    for (const unionId of unionIds) {
-      const parentIds = parentsByUnion.get(unionId) || [];
-      const partnerId = parentIds.find((id) => id !== personId);
-      if (!partnerId) continue;
-
-      const dedupeKey = `${unionId}|${partnerId}`;
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-
-      const partner = nodeMap.get(partnerId);
-      if (!partner) continue;
-
-      partnerEntries.push({
-        unionId,
-        partnerId,
-        partner,
-      });
-    }
-
-    if (partnerEntries.length < 2) continue;
-
-    // Sort by current x to keep layout stable
-    partnerEntries.sort((a, b) => a.partner.x - b.partner.x);
-
-    const anchorX = anchor.x;
-
-    if (partnerEntries.length === 2) {
-      // Hard rule: one left, one right
-      const leftItem = partnerEntries[0];
-      const rightItem = partnerEntries[1];
-
-      const leftDesiredX = anchorX - minPartnerGap;
-      const rightDesiredX = anchorX + minPartnerGap;
-
-      const leftDx = leftDesiredX - leftItem.partner.x;
-      const rightDx = rightDesiredX - rightItem.partner.x;
-
-      if (Math.abs(leftDx) > 0.5) {
-        shiftPartnerFamily(leftItem.partnerId, leftItem.unionId, leftDx);
-      }
-      if (Math.abs(rightDx) > 0.5) {
-        shiftPartnerFamily(rightItem.partnerId, rightItem.unionId, rightDx);
-      }
-
-      recenterUnion(leftItem.unionId);
-      recenterUnion(rightItem.unionId);
-      continue;
-    }
-
-    // 3+ partners: alternate around anchor
-    const leftSide = [];
-    const rightSide = [];
-
-    partnerEntries.forEach((item, idx) => {
-      if (idx % 2 === 0) leftSide.push(item);
-      else rightSide.push(item);
+  function buildFamilyNode(familyId, trail = new Set(), depth = 0) {
+    if (nodeMemo.has(familyId)) return nodeMemo.get(familyId);
+    const fam = familiesById.get(familyId);
+    if (!fam || trail.has(familyId)) return null;
+    trail.add(familyId);
+
+    const primaryParentIds = fam.parentIds.slice(0, 2);
+    const displayedParentIds = primaryParentIds.slice();
+    const unions = [];
+
+    unions.push({
+      familyId: fam.id,
+      parentIds: primaryParentIds.slice(),
+      childNodes: buildUnionChildren(fam.id, new Set(trail), depth),
+      anchorParentId: null,
+      sideHint: 0,
     });
 
-    leftSide.reverse();
-
-    for (let i = 0; i < leftSide.length; i++) {
-      const item = leftSide[i];
-      const desiredX = anchorX - ((i + 1) * minPartnerGap);
-      const dx = desiredX - item.partner.x;
-      if (Math.abs(dx) > 0.5) {
-        shiftPartnerFamily(item.partnerId, item.unionId, dx);
-      }
-      recenterUnion(item.unionId);
-    }
-
-    for (let i = 0; i < rightSide.length; i++) {
-      const item = rightSide[i];
-      const desiredX = anchorX + ((i + 1) * minPartnerGap);
-      const dx = desiredX - item.partner.x;
-      if (Math.abs(dx) > 0.5) {
-        shiftPartnerFamily(item.partnerId, item.unionId, dx);
-      }
-      recenterUnion(item.unionId);
-    }
-
-    for (const item of partnerEntries) {
-      recenterUnion(item.unionId);
-    }
-  }
-}
-
-
-
-function resolveHorizontalOverlaps(nodes, links) {
-  const { CARD_W, CARD_H } = TREE_CFG.sizing;
-
-  const minGap = cfgNum(TREE_CFG.layout?.minNodeGap, 20);
-  const siblingGap = cfgNum(TREE_CFG.layout?.siblingGap, minGap);
-  const rowTolerance = cfgNum(
-    TREE_CFG.layout?.rowTolerance,
-    Math.max(18, Math.round(CARD_H * 0.35))
-  );
-
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-
-  const outgoing = new Map();
-  for (const lk of links) {
-    if (!lk?.sourceId || !lk?.targetId) continue;
-    if (!outgoing.has(lk.sourceId)) outgoing.set(lk.sourceId, []);
-    outgoing.get(lk.sourceId).push(lk.targetId);
-  }
-
-  const unionsByPerson = new Map();
-  const parentsByUnion = new Map();
-  const childrenByUnion = new Map();
-
-  for (const lk of links) {
-    const s = nodeMap.get(lk.sourceId);
-    const t = nodeMap.get(lk.targetId);
-    if (!s || !t) continue;
-
-    if (s.kind === "person" && t.kind === "union") {
-      if (!unionsByPerson.has(s.id)) unionsByPerson.set(s.id, []);
-      unionsByPerson.get(s.id).push(t.id);
-
-      if (!parentsByUnion.has(t.id)) parentsByUnion.set(t.id, []);
-      parentsByUnion.get(t.id).push(s.id);
-    }
-
-    if (s.kind === "union" && t.kind === "person") {
-      if (!childrenByUnion.has(s.id)) childrenByUnion.set(s.id, []);
-      childrenByUnion.get(s.id).push(t.id);
-    }
-  }
-
-  function shiftSubtree(rootId, dx, visited = new Set()) {
-    const stack = [rootId];
-
-    while (stack.length) {
-      const id = stack.pop();
-      if (visited.has(id)) continue;
-      visited.add(id);
-
-      const n = nodeMap.get(id);
-      if (n) n.x += dx;
-
-      const kids = outgoing.get(id) || [];
-      for (const childId of kids) {
-        stack.push(childId);
-      }
-    }
-  }
-
-  function shiftCoupleBlock(personId, dx, visited = new Set()) {
-    const p = nodeMap.get(personId);
-    if (p && !visited.has(personId)) {
-      p.x += dx;
-      visited.add(personId);
-    }
-
-    const unionIds = unionsByPerson.get(personId) || [];
-    for (const uId of unionIds) {
-      const u = nodeMap.get(uId);
-      if (u && !visited.has(uId)) {
-        u.x += dx;
-        visited.add(uId);
-      }
-
-      const parentIds = parentsByUnion.get(uId) || [];
-      for (const otherParentId of parentIds) {
-        if (visited.has(otherParentId)) continue;
-        const other = nodeMap.get(otherParentId);
-        if (other) {
-          other.x += dx;
-          visited.add(otherParentId);
-        }
-      }
-
-      const childIds = childrenByUnion.get(uId) || [];
-      for (const childId of childIds) {
-        shiftSubtree(childId, dx, visited);
-      }
-    }
-  }
-
-  function buildRows() {
-    const people = nodes
-      .filter((n) => n.kind === "person" && Number.isFinite(n.x) && Number.isFinite(n.y))
-      .sort((a, b) => (a.y - b.y) || (a.x - b.x));
-
-    const rows = [];
-    for (const n of people) {
-      const last = rows[rows.length - 1];
-      if (!last || Math.abs(last.y - n.y) > rowTolerance) {
-        rows.push({ y: n.y, nodes: [n] });
-      } else {
-        last.nodes.push(n);
-      }
-    }
-
-    for (const row of rows) {
-      row.nodes.sort((a, b) => a.x - b.x);
-    }
-
-    return rows;
-  }
-
-  // PASS 1: normal left-to-right card collision cleanup
-  for (let pass = 0; pass < 4; pass++) {
-    const rows = buildRows();
-    let moved = false;
-
-    for (const row of rows) {
-      for (let i = 1; i < row.nodes.length; i++) {
-        const left = row.nodes[i - 1];
-        const right = row.nodes[i];
-
-        const requiredX = left.x + CARD_W + siblingGap;
-        if (right.x < requiredX) {
-          const dx = requiredX - right.x;
-          shiftCoupleBlock(right.id, dx);
-          moved = true;
-        }
-      }
-    }
-
-    if (!moved) break;
-  }
-
-  // PASS 2: keep children out from directly between co-parents
-  const unions = nodes.filter((n) => n.kind === "union" && Number.isFinite(n.x) && Number.isFinite(n.y));
-
-  for (const u of unions) {
-    const parentIds = parentsByUnion.get(u.id) || [];
-    if (parentIds.length < 2) continue;
-
-    const parents = parentIds
-      .map((id) => nodeMap.get(id))
-      .filter(Boolean)
-      .sort((a, b) => a.x - b.x);
-
-    if (parents.length < 2) continue;
-
-    const leftParent = parents[0];
-    const rightParent = parents[parents.length - 1];
-
-    const laneLeft = leftParent.x + CARD_W;
-    const laneRight = rightParent.x;
-
-    if (laneRight <= laneLeft) {
-      const dx = (laneLeft + minGap) - laneRight;
-      if (dx > 0) shiftCoupleBlock(rightParent.id, dx);
-      continue;
-    }
-
-    const unionKids = new Set(childrenByUnion.get(u.id) || []);
-    const trunkHalfWidth = cfgNum(TREE_CFG.layout?.trunkLaneRatio, 0.18) * CARD_W;
-    const trunkLeft = u.x - trunkHalfWidth;
-    const trunkRight = u.x + trunkHalfWidth;
-
-    for (const n of nodes) {
-      if (n.kind !== "person") continue;
-      if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) continue;
-      if (n.y <= leftParent.y + rowTolerance) continue;
-
-      const centerX = n.x + CARD_W / 2;
-      const overlapsParentLane = centerX > laneLeft && centerX < laneRight;
-      if (!overlapsParentLane) continue;
-
-      if (unionKids.has(n.id)) {
-        const nLeft = n.x;
-        const nRight = n.x + CARD_W;
-        const overlapsTrunk = !(nRight < trunkLeft || nLeft > trunkRight);
-        if (overlapsTrunk) {
-          const dx = (trunkRight + minGap) - nLeft;
-          if (dx > 0) shiftSubtree(n.id, dx);
-        }
-        continue;
-      }
-
-      const dx = (laneRight + minGap) - n.x;
-      if (dx > 0) shiftCoupleBlock(n.id, dx);
-    }
-  }
-
-  // PASS 3: final cleanup in case earlier pushes created new collisions
-  for (let pass = 0; pass < 4; pass++) {
-    const rows = buildRows();
-    let moved = false;
-
-    for (const row of rows) {
-      for (let i = 1; i < row.nodes.length; i++) {
-        const left = row.nodes[i - 1];
-        const right = row.nodes[i];
-
-        const requiredX = left.x + CARD_W + siblingGap;
-        if (right.x < requiredX) {
-          const dx = requiredX - right.x;
-          shiftCoupleBlock(right.id, dx);
-          moved = true;
-        }
-      }
-    }
-
-    if (!moved) break;
-  }
-}
-
-function applyStructuredFamilyLayout(nodes, links) {
-  const CARD_W = cfgNum(TREE_CFG.sizing?.CARD_W, 86);
-  const spouseGap = cfgNum(TREE_CFG.layout?.spouseGap, 28);
-  const siblingGap = cfgNum(TREE_CFG.layout?.siblingGap, 26);
-  const clusterGap = cfgNum(TREE_CFG.layout?.clusterGap, 34);
-  const rowTolerance = cfgNum(TREE_CFG.layout?.rowTolerance, 22);
-
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const parentsByUnion = new Map();
-  const childrenByUnion = new Map();
-  const parentUnionByPerson = new Map();
-  const spouseUnionsByPerson = new Map();
-
-  for (const lk of links) {
-    const s = nodeMap.get(lk.sourceId);
-    const t = nodeMap.get(lk.targetId);
-    if (!s || !t) continue;
-
-    if (s.kind === "person" && t.kind === "union") {
-      if (!parentsByUnion.has(t.id)) parentsByUnion.set(t.id, []);
-      parentsByUnion.get(t.id).push(s.id);
-      if (!spouseUnionsByPerson.has(s.id)) spouseUnionsByPerson.set(s.id, []);
-      spouseUnionsByPerson.get(s.id).push(t.id);
-    }
-
-    if (s.kind === "union" && t.kind === "person") {
-      if (!childrenByUnion.has(s.id)) childrenByUnion.set(s.id, []);
-      childrenByUnion.get(s.id).push(t.id);
-      if (!parentUnionByPerson.has(t.id)) parentUnionByPerson.set(t.id, []);
-      parentUnionByPerson.get(t.id).push(s.id);
-    }
-  }
-
-  const people = nodes
-    .filter((n) => n.kind === "person" && Number.isFinite(n.x) && Number.isFinite(n.y))
-    .sort((a, b) => (a.y - b.y) || (a.x - b.x));
-
-  const rows = [];
-  for (const person of people) {
-    const last = rows[rows.length - 1];
-    if (!last || Math.abs(last.y - person.y) > rowTolerance) {
-      rows.push({ y: person.y, people: [person] });
-    } else {
-      last.people.push(person);
-    }
-  }
-
-  const rowIndexByPerson = new Map();
-  rows.forEach((row, idx) => row.people.forEach((p) => rowIndexByPerson.set(p.id, idx)));
-
-  function buildBlocks(row) {
-    const rowSet = new Set(row.people.map((p) => p.id));
-    const adj = new Map(row.people.map((p) => [p.id, new Set()]));
-
-    for (const [unionId, parentIds] of parentsByUnion.entries()) {
-      const onRow = parentIds.filter((id) => rowSet.has(id));
-      if (onRow.length < 2) continue;
-      const ordered = onRow.slice().sort((a, b) => nodeMap.get(a).x - nodeMap.get(b).x);
-      for (let i = 1; i < ordered.length; i++) {
-        adj.get(ordered[i - 1]).add(ordered[i]);
-        adj.get(ordered[i]).add(ordered[i - 1]);
-      }
-    }
-
-    function orderBlockMembers(ids) {
-      const uniqueIds = [...new Set(ids)];
-      if (uniqueIds.length <= 2) {
-        return uniqueIds
-          .map((id) => nodeMap.get(id))
-          .filter(Boolean)
-          .sort((a, b) => a.x - b.x);
-      }
-
-      const degreeOne = uniqueIds.filter((id) => (adj.get(id)?.size || 0) === 1);
-      const startId = degreeOne.length
-        ? degreeOne.slice().sort((a, b) => nodeMap.get(a).x - nodeMap.get(b).x)[0]
-        : uniqueIds.slice().sort((a, b) => nodeMap.get(a).x - nodeMap.get(b).x)[0];
-
-      const ordered = [];
-      const walked = new Set();
-      let cur = startId;
-      let prev = null;
-
-      while (cur && !walked.has(cur)) {
-        walked.add(cur);
-        ordered.push(nodeMap.get(cur));
-
-        const neighbors = [...(adj.get(cur) || [])]
-          .filter((id) => id !== prev)
-          .sort((a, b) => nodeMap.get(a).x - nodeMap.get(b).x);
-
-        const next = neighbors.find((id) => !walked.has(id));
-        prev = cur;
-        cur = next || null;
-      }
-
-      for (const id of uniqueIds) {
-        if (!walked.has(id)) ordered.push(nodeMap.get(id));
-      }
-
-      return ordered.filter(Boolean);
-    }
-
-    const visited = new Set();
-    const blocks = [];
-    for (const person of row.people) {
-      if (visited.has(person.id)) continue;
-      const stack = [person.id];
-      const ids = [];
-      visited.add(person.id);
-      while (stack.length) {
-        const id = stack.pop();
-        ids.push(id);
-        for (const next of adj.get(id) || []) {
-          if (visited.has(next)) continue;
-          visited.add(next);
-          stack.push(next);
-        }
-      }
-      const members = orderBlockMembers(ids);
-      blocks.push({
-        ids: members.map((m) => m.id),
-        members,
-        width: members.length * CARD_W + Math.max(0, members.length - 1) * spouseGap,
-        currentCenter: members.reduce((sum, m) => sum + (m.x + CARD_W / 2), 0) / members.length,
+    const extras = (attachedFamilyIdsByHost.get(fam.id) || []).slice();
+    const anchorSlots = new Map();
+    for (const pid of primaryParentIds) anchorSlots.set(pid, { left: [], right: [] });
+
+    for (const extraFamId of extras) {
+      if (trail.has(extraFamId)) continue;
+      const extraFam = familiesById.get(extraFamId);
+      if (!extraFam) continue;
+      const anchorParentId = extraFam.parentIds.find((pid) => chooseHomeFamilyForPerson(pid) === fam.id) || null;
+      const partnerIds = extraFam.parentIds.filter((pid) => pid !== anchorParentId);
+      const partnerId = partnerIds[0] || null;
+      if (!anchorParentId || !partnerId) continue;
+
+      if (!displayedParentIds.includes(partnerId)) displayedParentIds.push(partnerId);
+
+      const anchorIndex = primaryParentIds.indexOf(anchorParentId);
+      const defaultSide = anchorIndex <= 0 ? 1 : -1;
+      const slot = anchorSlots.get(anchorParentId) || { left: [], right: [] };
+      const sideHint = defaultSide > 0
+        ? (slot.right.length <= slot.left.length ? 1 : -1)
+        : (slot.left.length <= slot.right.length ? -1 : 1);
+      if (sideHint < 0) slot.left.push(partnerId); else slot.right.push(partnerId);
+      anchorSlots.set(anchorParentId, slot);
+
+      unions.push({
+        familyId: extraFam.id,
+        parentIds: [anchorParentId, partnerId],
+        childNodes: buildUnionChildren(extraFam.id, new Set([...trail, extraFamId]), depth),
+        anchorParentId,
+        sideHint,
       });
     }
-    blocks.sort((a, b) => a.currentCenter - b.currentCenter);
-    return blocks;
-  }
 
-  function assignBlockCoords(block, leftX) {
-    let cursor = leftX;
-    for (const member of block.members) {
-      member.x = cursor;
-      cursor += CARD_W + spouseGap;
-    }
-    block.left = leftX;
-    block.right = cursor - spouseGap;
-    block.center = (block.left + block.right) / 2;
-  }
-
-  function recenterUnionsForRow(row) {
-    const rowSet = new Set(row.people.map((p) => p.id));
-    for (const [unionId, parentIds] of parentsByUnion.entries()) {
-      const onRow = parentIds
-        .filter((id) => rowSet.has(id))
-        .map((id) => nodeMap.get(id))
-        .filter(Boolean)
-        .sort((a, b) => a.x - b.x);
-      if (onRow.length < 2) continue;
-      const left = onRow[0].x + CARD_W;
-      const right = onRow[onRow.length - 1].x;
-      const unionNode = nodeMap.get(unionId);
-      if (unionNode) unionNode.x = (left + right) / 2;
-    }
-  }
-
-  function primaryParentUnion(personId) {
-    const unions = (parentUnionByPerson.get(personId) || []).filter((id) => nodeMap.has(id));
-    if (!unions.length) return null;
-    if (unions.length === 1) return unions[0];
-    unions.sort((a, b) => (nodeMap.get(a).x - nodeMap.get(b).x));
-    return unions[0];
-  }
-
-  function layoutRow(rowIndex) {
-    const row = rows[rowIndex];
-    const blocks = buildBlocks(row);
-    const blockByPerson = new Map();
-    blocks.forEach((block, idx) => block.ids.forEach((id) => blockByPerson.set(id, idx)));
-
-    const clusters = [];
-    const seenBlocks = new Set();
-    for (const block of blocks) {
-      const blockId = blocks.indexOf(block);
-      if (seenBlocks.has(blockId)) continue;
-      const memberParentUnions = block.ids.map(primaryParentUnion).filter(Boolean);
-      const parentUnionId = memberParentUnions.length ? memberParentUnions[0] : null;
-      const clusterBlocks = [];
-      if (parentUnionId) {
-        const childIds = (childrenByUnion.get(parentUnionId) || []).filter((id) => blockByPerson.has(id));
-        const orderedBlockIds = [...new Set(childIds.map((id) => blockByPerson.get(id)))].sort((a, b) => blocks[a].currentCenter - blocks[b].currentCenter);
-        for (const idx of orderedBlockIds) {
-          if (seenBlocks.has(idx)) continue;
-          seenBlocks.add(idx);
-          clusterBlocks.push(blocks[idx]);
-        }
-      } else {
-        seenBlocks.add(blockId);
-        clusterBlocks.push(block);
-      }
-
-      const center = parentUnionId && nodeMap.get(parentUnionId)
-        ? nodeMap.get(parentUnionId).x
-        : clusterBlocks.reduce((sum, b) => sum + b.currentCenter, 0) / clusterBlocks.length;
-
-      const clusterWidth = clusterBlocks.reduce((sum, b) => sum + b.width, 0) + Math.max(0, clusterBlocks.length - 1) * siblingGap;
-      clusters.push({ parentUnionId, blocks: clusterBlocks, desiredCenter: center, width: clusterWidth });
+    let orderedParentIds = displayedParentIds.slice();
+    if (primaryParentIds.length === 2) {
+      const [p0, p1] = primaryParentIds;
+      const leftForP0 = unions.filter((u) => u.anchorParentId === p0 && u.sideHint < 0).map((u) => u.parentIds.find((pid) => pid !== p0)).filter(Boolean);
+      const rightForP0 = unions.filter((u) => u.anchorParentId === p0 && u.sideHint > 0).map((u) => u.parentIds.find((pid) => pid !== p0)).filter(Boolean);
+      const leftForP1 = unions.filter((u) => u.anchorParentId === p1 && u.sideHint < 0).map((u) => u.parentIds.find((pid) => pid !== p1)).filter(Boolean);
+      const rightForP1 = unions.filter((u) => u.anchorParentId === p1 && u.sideHint > 0).map((u) => u.parentIds.find((pid) => pid !== p1)).filter(Boolean);
+      orderedParentIds = uniq([
+        ...leftForP0,
+        ...leftForP1,
+        p1,
+        p0,
+        ...rightForP0,
+        ...rightForP1,
+      ]).filter(Boolean);
     }
 
-    clusters.sort((a, b) => a.desiredCenter - b.desiredCenter);
-
-    let lastRight = null;
-    for (const cluster of clusters) {
-      let left = cluster.desiredCenter - cluster.width / 2;
-      if (lastRight != null) left = Math.max(left, lastRight + clusterGap);
-
-      let cursor = left;
-      for (const block of cluster.blocks) {
-        assignBlockCoords(block, cursor);
-        cursor += block.width + siblingGap;
-      }
-      cluster.left = left;
-      cluster.right = cursor - siblingGap;
-      lastRight = cluster.right;
-    }
-
-    // second pass to tighten any accidental block collisions inside same row
-    const allBlocks = clusters.flatMap((cluster) => cluster.blocks.map((block) => ({ cluster, block })))
-      .sort((a, b) => a.block.left - b.block.left);
-    for (let i = 1; i < allBlocks.length; i++) {
-      const leftItem = allBlocks[i - 1];
-      const rightItem = allBlocks[i];
-      const gap = leftItem.cluster === rightItem.cluster ? siblingGap : clusterGap;
-      const needed = leftItem.block.right + gap;
-      if (rightItem.block.left < needed) {
-        assignBlockCoords(rightItem.block, needed);
-        rightItem.block.left = needed;
-        rightItem.block.right = needed + rightItem.block.width;
-      }
-    }
-
-    recenterUnionsForRow(row);
+    const node = {
+      id: `family:${familyId}`,
+      type: "family",
+      familyId,
+      displayedParentIds: orderedParentIds,
+      people: orderedParentIds.map((pid) => peopleById.get(pid)).filter(Boolean),
+      unions,
+      children: unions.flatMap((u) => u.childNodes),
+      depth,
+    };
+    nodeMemo.set(familyId, node);
+    return node;
   }
 
-  for (let i = 0; i < rows.length; i++) {
-    layoutRow(i);
+  const roots = [];
+  for (const familyId of orderedRootIds) {
+    if (attachedFamilyIds.has(familyId)) continue;
+    const node = buildFamilyNode(familyId, new Set(), 0);
+    if (node) roots.push(node);
   }
 
-  // final child centering pass: move sibling clusters together while preserving row packing
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    const rowPeople = row.people.slice().sort((a, b) => a.x - b.x);
-    const personIds = new Set(rowPeople.map((p) => p.id));
-    const groups = [];
-    for (const [unionId, childIds] of childrenByUnion.entries()) {
-      const kids = childIds.filter((id) => personIds.has(id)).map((id) => nodeMap.get(id)).sort((a, b) => a.x - b.x);
-      if (!kids.length) continue;
-      groups.push({ unionId, kids });
-    }
-    groups.sort((a, b) => nodeMap.get(a.unionId).x - nodeMap.get(b.unionId).x);
-
-    let prevRight = null;
-    for (const group of groups) {
-      const unionX = nodeMap.get(group.unionId).x;
-      const leftMost = group.kids[0].x;
-      const rightMost = group.kids[group.kids.length - 1].x + CARD_W;
-      const width = rightMost - leftMost;
-      let desiredLeft = unionX - width / 2;
-      if (prevRight != null) desiredLeft = Math.max(desiredLeft, prevRight + clusterGap);
-      const dx = desiredLeft - leftMost;
-      if (Math.abs(dx) > 0.5) {
-        for (const kid of group.kids) kid.x += dx;
-      }
-      prevRight = (group.kids[group.kids.length - 1].x + CARD_W);
-    }
+  if (!roots.length) {
+    const people = Array.from(peopleById.values()).slice(0, 1).map((p) => buildLeafPerson(p.id));
+    return people;
   }
 
-  for (const row of rows) recenterUnionsForRow(row);
+  return roots;
 }
 
+
+function makeLayoutMetrics() {
+  const sizingCfg = TREE_CFG?.sizing || {};
+  const layoutCfg = TREE_CFG?.layout || {};
+  const viewCfg = TREE_CFG?.view || {};
+
+  const vw = Math.max(320, window.innerWidth || 1280);
+  const fallbackCardW = vw < 420 ? 78 : vw < 768 ? 88 : vw < 1200 ? 96 : 104;
+  const cardWidth = cfgNum(sizingCfg.CARD_W, fallbackCardW);
+  const cardHeight = cfgNum(sizingCfg.CARD_H, Math.round(cardWidth * 1.23));
+  const radius = cfgNum(sizingCfg.CARD_R, Math.max(8, Math.round(cardWidth * 0.10)));
+  const bottomPanelH = cfgNum(sizingCfg.BOTTOM_PANEL_H, Math.max(34, Math.round(cardHeight * 0.34)));
+  const photoW = cfgNum(sizingCfg.PHOTO_W, cardWidth);
+  const photoH = cfgNum(sizingCfg.PHOTO_H, Math.max(1, cardHeight - bottomPanelH));
+  const imageRatio = Math.max(0.40, Math.min(0.82, photoH / cardHeight));
+
+  return {
+    card: {
+      width: cardWidth,
+      height: cardHeight,
+      radius,
+      padding: 0,
+      photoWidth: Math.max(1, Math.min(cardWidth, photoW)),
+      photoHeight: Math.max(1, Math.min(cardHeight, photoH)),
+      bottomPanelHeight: Math.max(1, Math.min(cardHeight - 16, bottomPanelH)),
+      imageRatio,
+    },
+    spacing: {
+      coupleGap: cfgNum(layoutCfg.spouseGap, 26),
+      siblingGap: cfgNum(layoutCfg.siblingGap, 22),
+      clusterGap: cfgNum(layoutCfg.clusterGap, 28),
+      generationGap: Math.max(28, cfgNum(TREE_CFG?.dagre?.ranksep, 40) + 6),
+      stackGap: Math.max(8, cfgNum(layoutCfg.minNodeGap, 18)),
+      sidePad: cfgNum(TREE_CFG?.dagre?.marginx, 20),
+      topPad: cfgNum(TREE_CFG?.dagre?.marginy, 20),
+      bottomPad: cfgNum(TREE_CFG?.dagre?.marginy, 20),
+      trunkDrop: Math.max(16, cfgNum(layoutCfg.trunkDropMin, 24)),
+      childStem: Math.max(10, cfgNum(layoutCfg.stemLen, 20)),
+      unionGroupGap: Math.max(16, cfgNum(layoutCfg.clusterGap, 28)),
+      partnerBranchGap: Math.max(cardWidth + 12, cardWidth + cfgNum(layoutCfg.minPartnerGap, 24)),
+    },
+    view: {
+      partialDepth: cfgNum(viewCfg.partialDepth, 2),
+      defaultPartial: viewCfg.defaultPartial !== false,
+      stackLastGeneration: viewCfg.stackLastGeneration !== false,
+    },
+  };
+}
+
+
+function measureChildrenList(children, metrics, depth) {
+  if (!children.length) {
+    return { children: [], width: 0, height: 0, vertical: false };
+  }
+  const measured = children.map((child) => measureNode(child, metrics));
+  const allLeafChildren = measured.every((child) => child.type !== "family");
+  const vertical = metrics.view.stackLastGeneration !== false
+    && allLeafChildren
+    && measured.length > 1;
+  if (vertical) {
+    const width = Math.max(...measured.map((child) => child.subtreeWidth));
+    const height = measured.reduce((sum, child, idx) => sum + child.subtreeHeight + (idx > 0 ? metrics.spacing.stackGap : 0), 0);
+    return { children: measured, width, height, vertical };
+  }
+  const width = measured.reduce((sum, child, idx) => sum + child.subtreeWidth + (idx > 0 ? metrics.spacing.siblingGap : 0), 0);
+  const height = Math.max(...measured.map((child) => child.subtreeHeight));
+  return { children: measured, width, height, vertical };
+}
+
+function measureNode(node, metrics) {
+  const { width: CARD_W, height: CARD_H } = metrics.card;
+  const { coupleGap, generationGap, unionGroupGap } = metrics.spacing;
+
+  if (node.type !== "family") {
+    node.selfWidth = CARD_W;
+    node.subtreeWidth = CARD_W;
+    node.subtreeHeight = CARD_H;
+    return node;
+  }
+
+  node.primaryParentIds = node.unions[0]?.parentIds?.slice() || node.displayedParentIds.slice(0, 2);
+  node.extraParentIds = node.displayedParentIds.filter((pid) => !node.primaryParentIds.includes(pid));
+  node.selfWidth = Math.max(1, node.displayedParentIds.length) * CARD_W + Math.max(0, node.displayedParentIds.length - 1) * coupleGap;
+
+  node.unions = node.unions.map((union) => {
+    const measuredGroup = measureChildrenList(union.childNodes || [], metrics, node.depth + 1);
+    return {
+      ...union,
+      childNodes: measuredGroup.children,
+      branchWidth: measuredGroup.width,
+      branchHeight: measuredGroup.height,
+      verticalChildren: measuredGroup.vertical,
+      subtreeWidth: measuredGroup.width,
+      subtreeHeight: measuredGroup.height,
+    };
+  });
+
+  const nonEmptyUnions = node.unions.filter((union) => union.childNodes.length);
+  if (!nonEmptyUnions.length) {
+    node.subtreeWidth = node.selfWidth;
+    node.subtreeHeight = CARD_H;
+    return node;
+  }
+
+  const childrenWidth = nonEmptyUnions.reduce((sum, union, idx) => sum + union.branchWidth + (idx > 0 ? unionGroupGap : 0), 0);
+  const childrenHeight = Math.max(...nonEmptyUnions.map((union) => union.branchHeight));
+  node.subtreeWidth = Math.max(node.selfWidth, childrenWidth);
+  node.subtreeHeight = CARD_H + generationGap + childrenHeight;
+  return node;
+}
+
+function layoutChildrenList(children, left, top, metrics, segments, cards, vertical = false) {
+  if (!children.length) return [];
+  const out = [];
+  if (vertical) {
+    let cursorTop = top;
+    for (const child of children) {
+      const childLeft = left + ((Math.max(...children.map((c) => c.subtreeWidth)) - child.subtreeWidth) / 2);
+      layoutNode(child, childLeft, cursorTop, metrics, segments, cards);
+      out.push(child);
+      cursorTop += child.subtreeHeight + metrics.spacing.stackGap;
+    }
+    return out;
+  }
+  let cursorLeft = left;
+  for (const child of children) {
+    layoutNode(child, cursorLeft, top, metrics, segments, cards);
+    out.push(child);
+    cursorLeft += child.subtreeWidth + metrics.spacing.siblingGap;
+  }
+  return out;
+}
+
+function getNodeAttachSpec(node) {
+  if (node.type !== "family") {
+    return {
+      y: node.top,
+      joinX: node.unionX,
+      leftX: node.unionX,
+      rightX: node.unionX,
+    };
+  }
+
+  const inboundX = Number.isFinite(node.cardCenters?.get?.(node.inboundPersonId))
+    ? node.cardCenters.get(node.inboundPersonId)
+    : null;
+  if (Number.isFinite(inboundX)) {
+    return {
+      y: node.top,
+      joinX: inboundX,
+      leftX: inboundX,
+      rightX: inboundX,
+    };
+  }
+
+  const centers = Array.from(node.cardCenters?.values?.() || []).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!centers.length) {
+    return {
+      y: node.top,
+      joinX: node.unionX,
+      leftX: node.unionX,
+      rightX: node.unionX,
+    };
+  }
+
+  const leftX = centers[0];
+  const rightX = centers[centers.length - 1];
+  const joinX = Math.max(leftX, Math.min(rightX, node.unionX));
+
+  return {
+    y: node.top,
+    joinX,
+    leftX,
+    rightX,
+  };
+}
+
+function drawAttachSpan(segments, attach) {
+  if (!attach) return;
+  if (attach.rightX > attach.leftX) {
+    segments.push({
+      x1: attach.leftX,
+      y1: attach.y,
+      x2: attach.rightX,
+      y2: attach.y,
+      cls: "tree-link tree-link-child",
+    });
+  }
+}
+
+function layoutNode(node, left, top, metrics, segments, cards) {
+  const { width: CARD_W, height: CARD_H } = metrics.card;
+  const { coupleGap, generationGap, trunkDrop, childStem, unionGroupGap } = metrics.spacing;
+
+  node.left = left;
+  node.top = top;
+  node.centerX = left + (node.subtreeWidth / 2);
+
+  if (node.type !== "family") {
+    node.contentLeft = node.centerX - (CARD_W / 2);
+    cards.push({ person: node.person, x: node.contentLeft, y: top });
+    node.unionX = node.contentLeft + (CARD_W / 2);
+    node.anchorTopY = top + CARD_H;
+    node.attach = { y: top, joinX: node.unionX, leftX: node.unionX, rightX: node.unionX };
+    return;
+  }
+
+  const cardCenters = new Map();
+  const rowLeft = node.centerX - (node.selfWidth / 2);
+  let cursor = rowLeft;
+  for (const pid of node.displayedParentIds) {
+    const person = node.people.find((it) => it?.id === pid);
+    if (person) cards.push({ person, x: cursor, y: top });
+    cardCenters.set(pid, cursor + (CARD_W / 2));
+    cursor += CARD_W + coupleGap;
+  }
+
+  node.contentLeft = rowLeft;
+  node.cardCenters = cardCenters;
+  node.unionX = (() => {
+    const primary = node.primaryParentIds || node.displayedParentIds.slice(0, 2);
+    const centers = primary.map((pid) => cardCenters.get(pid)).filter(Number.isFinite);
+    if (!centers.length) return node.centerX;
+    return centers.length === 1 ? centers[0] : (centers[0] + centers[centers.length - 1]) / 2;
+  })();
+  node.anchorTopY = top + CARD_H;
+  node.attach = getNodeAttachSpec(node);
+
+  for (const union of node.unions) {
+    const centers = union.parentIds.map((pid) => cardCenters.get(pid)).filter(Number.isFinite);
+    if (centers.length >= 2) {
+      segments.push({
+        x1: centers[0],
+        y1: top + Math.round(CARD_H * 0.52),
+        x2: centers[centers.length - 1],
+        y2: top + Math.round(CARD_H * 0.52),
+        cls: "tree-link tree-link-parent",
+      });
+    }
+    union.unionX = centers.length >= 2 ? (centers[0] + centers[centers.length - 1]) / 2 : (centers[0] ?? node.unionX);
+  }
+
+  const activeUnions = node.unions.filter((union) => union.childNodes.length);
+  if (!activeUnions.length) return;
+
+  const childrenTop = top + CARD_H + generationGap;
+  const subtreeLeft = node.centerX - (node.subtreeWidth / 2);
+  const subtreeRight = subtreeLeft + node.subtreeWidth;
+  let cursorLeft = subtreeLeft;
+
+  for (const union of activeUnions) {
+    const desiredLeft = union.unionX - (union.branchWidth / 2);
+    const maxLeft = subtreeRight - union.branchWidth;
+    const branchLeft = Math.max(cursorLeft, Math.min(desiredLeft, maxLeft));
+    const laidOut = layoutChildrenList(union.childNodes, branchLeft, childrenTop, metrics, segments, cards, union.verticalChildren);
+    const childTargets = laidOut
+      .map((child) => ({ child, attach: getNodeAttachSpec(child) }))
+      .filter((pt) => Number.isFinite(pt.attach.joinX) && Number.isFinite(pt.attach.y));
+    const childXs = childTargets.map((pt) => pt.attach.joinX);
+    const trunkTop = top + CARD_H;
+    const trunkBottom = trunkTop + trunkDrop;
+
+    if (union.verticalChildren && childTargets.length > 1) {
+      const railTop = childTargets[0].attach.y;
+      const railBottom = childTargets[childTargets.length - 1].attach.y;
+      segments.push({ x1: union.unionX, y1: trunkTop, x2: union.unionX, y2: railTop, cls: "tree-link tree-link-child" });
+      if (railBottom > railTop) {
+        segments.push({ x1: union.unionX, y1: railTop, x2: union.unionX, y2: railBottom, cls: "tree-link tree-link-child" });
+      }
+      for (const pt of childTargets) {
+        segments.push({ x1: union.unionX, y1: pt.attach.y, x2: pt.attach.joinX, y2: pt.attach.y, cls: "tree-link tree-link-child" });
+        drawAttachSpan(segments, pt.attach);
+      }
+    } else if (childXs.length === 1) {
+      const target = childTargets[0].attach;
+      const joinY = Math.min(trunkBottom, target.y);
+      segments.push({ x1: union.unionX, y1: trunkTop, x2: union.unionX, y2: joinY, cls: "tree-link tree-link-child" });
+      if (union.unionX !== target.joinX) {
+        segments.push({ x1: union.unionX, y1: joinY, x2: target.joinX, y2: joinY, cls: "tree-link tree-link-child" });
+      }
+      if (joinY !== target.y) {
+        segments.push({ x1: target.joinX, y1: joinY, x2: target.joinX, y2: target.y, cls: "tree-link tree-link-child" });
+      }
+      drawAttachSpan(segments, target);
+    } else if (childXs.length > 1) {
+      const minX = Math.min(...childXs);
+      const maxX = Math.max(...childXs);
+      const highestAttachY = Math.min(...childTargets.map((pt) => pt.attach.y));
+      const busLift = Math.max(12, childStem);
+      const busY = Math.max(trunkTop + 10, highestAttachY - busLift);
+      segments.push({ x1: union.unionX, y1: trunkTop, x2: union.unionX, y2: busY, cls: "tree-link tree-link-child" });
+      segments.push({ x1: minX, y1: busY, x2: maxX, y2: busY, cls: "tree-link tree-link-child" });
+      for (const pt of childTargets) {
+        segments.push({ x1: pt.attach.joinX, y1: busY, x2: pt.attach.joinX, y2: pt.attach.y, cls: "tree-link tree-link-child" });
+        drawAttachSpan(segments, pt.attach);
+      }
+    }
+
+    cursorLeft = branchLeft + union.branchWidth + unionGroupGap;
+  }
+}
+
+function buildScene(treeJson, previewMode) {
+  const metrics = makeLayoutMetrics();
+  const model = normalizeTree(treeJson);
+  let roots = buildRenderForest(model);
+
+  const partialDepth = metrics.view.partialDepth ?? 2;
+  if (previewMode) {
+    const trim = (node, depth) => {
+      if (depth >= partialDepth) {
+        node.children = [];
+        return;
+      }
+      node.children.forEach((child) => trim(child, depth + 1));
+    };
+    roots.forEach((root) => trim(root, 0));
+  }
+
+  roots = roots.map((root) => measureNode(root, metrics));
+
+  const segments = [];
+  const cards = [];
+  const { sidePad, topPad, bottomPad, clusterGap } = metrics.spacing;
+
+  const totalWidth = roots.reduce((sum, root, idx) => sum + root.subtreeWidth + (idx > 0 ? clusterGap : 0), 0);
+  let cursorLeft = sidePad;
+  const top = topPad;
+  for (const root of roots) {
+    layoutNode(root, cursorLeft, top, metrics, segments, cards);
+    cursorLeft += root.subtreeWidth + clusterGap;
+  }
+
+  const maxRight = cards.reduce((m, c) => Math.max(m, c.x + metrics.card.width), 0);
+  const maxBottom = cards.reduce((m, c) => Math.max(m, c.y + metrics.card.height), 0);
+  const viewBox = {
+    x: 0,
+    y: 0,
+    w: Math.max(sidePad * 2 + totalWidth, maxRight + sidePad),
+    h: Math.max(topPad + bottomPad + metrics.card.height, maxBottom + bottomPad),
+  };
+
+  return { cards, segments, viewBox, metrics };
+}
 
 async function fetchTreeJson() {
   const url = window.TREE_API_URL;
   if (!url) throw new Error("TREE_API_URL is not set");
-
   const res = await fetch(url, { headers: { accept: "application/json" } });
   if (!res.ok) throw new Error(`Tree API ${res.status} ${res.statusText}`);
   return res.json();
 }
 
-function parseBool(value, fallback = false) {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const v = value.trim().toLowerCase();
-    if (["true", "1", "yes", "on"].includes(v)) return true;
-    if (["false", "0", "no", "off", ""].includes(v)) return false;
+function wireToolbar(state, render) {
+  const fitBtn = $("#fitTreeBtn");
+  if (fitBtn) fitBtn.addEventListener("click", () => fitTreeToScreen());
+
+  const toggleBtn = $("#treeDepthToggleBtn") || $("#treeMoreBtn") || $("#btnFull");
+  if (toggleBtn) {
+    const syncLabel = () => {
+      toggleBtn.textContent = state.preview ? "See Full Tree" : "See Partial Tree";
+    };
+    syncLabel();
+    toggleBtn.addEventListener("click", () => {
+      state.preview = !state.preview;
+      syncLabel();
+      render();
+    });
   }
-  if (typeof value === "number") return value !== 0;
-  return fallback;
-}
-
-function wireToolbar(renderFull) {
-  const btnFit = $("#fitTreeBtn") || $("#btnFit");
-  if (btnFit) btnFit.addEventListener("click", () => fitTreeToScreen());
-
-  const btnFull = $("#treeMoreBtn") || $("#btnFull");
-  if (btnFull) btnFull.addEventListener("click", renderFull);
 }
 
 async function boot() {
@@ -1097,36 +769,25 @@ async function boot() {
   let treeJson;
   try {
     treeJson = await fetchTreeJson();
-  } catch (e) {
-    console.error("[LineAgeMap] tree API failed", e);
+  } catch (err) {
+    console.error("[LineAgeMap] tree API failed", err);
     return;
   }
 
-  const state = { treeJson, preview: parseBool(window.TREE_PREVIEW_MODE, false) };
-  const previewDepth = Number(window.TREE_PREVIEW_DEPTH || 2);
+  const metrics = makeLayoutMetrics();
+  const state = { preview: metrics.view.defaultPartial !== false, treeJson };
 
   const render = () => {
-    const { nodes, links } = buildGraph(state.treeJson, {
-      previewMode: state.preview,
-      previewDepth,
-    });
-
     try {
-      layoutWithDagre(nodes, links);
-      applyStructuredFamilyLayout(nodes, links);
-      renderFamilyTree(svg, { nodes, links });
+      const scene = buildScene(state.treeJson, state.preview);
+      renderFamilyTree(svg, scene);
       fitTreeToScreen();
-    } catch (e) {
-      console.error("[LineAgeMap] tree render failed", e);
+    } catch (err) {
+      console.error("[LineAgeMap] tree render failed", err);
     }
   };
 
-  const renderFull = () => {
-    state.preview = false;
-    render();
-  };
-
-  wireToolbar(renderFull);
+  wireToolbar(state, render);
   render();
 }
 
