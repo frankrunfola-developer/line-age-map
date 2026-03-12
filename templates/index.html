@@ -18,24 +18,21 @@
   <div class="appFrameCard">
     <div class="landing">
 
-      <!-- Title stack -->
       <header class="lmHero">
-        <div class="lmHeroLogoWrap" aria-label="LineAgeMap">
-          <img class="lmHeroLogo" src="{{ url_for('static', filename='img/logo_text.png') }}" alt="LineAgeMap" />
-        </div>
-
-        <p class="lmSubcopy">Explore your family’s journey across centuries and continents with interactive historical maps.</p>
-
-        <a class="lmCta" href="{{ url_for('register') }}">Get Started</a>
+        <div class="lmKicker">A Curated Family Chronicle</div>
+        <h1 class="lmTitle">Preserve your family's journey<br>across generations.</h1>
+        <div class="lmHeroOrn" aria-hidden="true"></div>
+        <p class="lmSubcopy">Build your family tree. Trace migration. Preserve the people, places, and milestones that shaped your legacy.</p>
+        <a class="lmCta" href="{{ url_for('register') }}">Create Your Family Map</a>
       </header>
-      <!-- Feature previews -->
+
       <section class="lmFeatures" aria-label="LineAgeMap features">
         <div class="lmFeatureGrid">
           <a class="lmFeatureCard lmFeatureCard--tree" href="{{ url_for('tree_view') }}" aria-label="Family Tree">
-            <div class="lmFeatureMedia" aria-hidden="true"><div class="lmFeatureViewport">
-                <iframe class="lmFeatureFrame" src="{{ url_for("tree_view")
-                  }}?sample={{ sample_id }}&embed=1" title="Tree preview" loading="lazy">
-                </iframe>
+            <div class="lmFeatureMedia" aria-hidden="true">
+              <div class="lmFeatureViewport">
+                <iframe class="lmFeatureFrame" src="{{ url_for('tree_view') }}?sample={{ sample_id }}&embed=1" title="Tree preview"
+                  loading="lazy"></iframe>
               </div>
             </div>
 
@@ -47,9 +44,8 @@
           <a class="lmFeatureCard lmFeatureCard--timeline" href="{{ url_for('timeline_view') }}" aria-label="Timeline">
             <div class="lmFeatureMedia" aria-hidden="true">
               <div class="lmFeatureViewport">
-                <iframe class="lmFeatureFrame"
-                  src="{{ url_for("timeline_view") }}?sample={{ sample_id }}&embed=1" title="Timeline preview" loading="lazy">
-                </iframe>
+                <iframe class="lmFeatureFrame" src="{{ url_for('timeline_view') }}?sample={{ sample_id }}&embed=1" title="Timeline preview"
+                  loading="lazy"></iframe>
               </div>
             </div>
 
@@ -59,8 +55,12 @@
           </a>
 
           <a class="lmFeatureCard lmFeatureCard--map" href="{{ url_for('map_view') }}" aria-label="Map">
-            <div class="lmFeatureMedia" aria-hidden="true"><div class="lmFeatureViewport"><iframe class="lmFeatureFrame" src="{{ url_for("map_view")
-                  }}?sample={{ sample_id }}&embed=1" title="Map preview" loading="lazy"></iframe></div></div>
+            <div class="lmFeatureMedia" aria-hidden="true">
+              <div class="lmFeatureViewport">
+                <iframe class="lmFeatureFrame" src="{{ url_for('map_view') }}?sample={{ sample_id }}&embed=1" title="Map preview"
+                  loading="lazy"></iframe>
+              </div>
+            </div>
 
             <div class="lmFeatureBody">
               <div class="lmFeatureTitle">Map</div>
@@ -69,16 +69,38 @@
         </div>
       </section>
 
-      <!-- Legacies CTA -->
-      <div class="lmSectionHead" aria-hidden="true">
-        <span class="lmOrnRule lmOrnRule--left"></span>
-        <div class="lmSectionTitle">Explore Famous Legacies</div>
-        <span class="lmOrnRule lmOrnRule--right"></span>
-      </div>
+      <section class="lmWhy" aria-label="Why LineAgeMap">
+        <div class="lmSectionHead lmSectionHead--bottom" aria-hidden="true">
+          <span class="lmOrnRule lmOrnRule--left"></span>
+          <div class="lmSectionTitle">Your story deserves to be preserved</div>
+          <span class="lmOrnRule lmOrnRule--right"></span>
+        </div>
 
-      <div class="lmCenterCta">
-        <a class="lmCta" href="{{ url_for('explore_legacies_view') }}">Explore Legacies</a>
-      </div>
+        <div class="lmWhyGrid">
+          <article class="lmWhyCard">
+            <div class="lmWhyIcon" aria-hidden="true">🛡️</div>
+            <h2 class="lmWhyTitle">Privacy &amp; Security</h2>
+            <p class="lmWhyText">Your family history stays yours, protected with secure modern storage.</p>
+          </article>
+
+          <article class="lmWhyCard">
+            <div class="lmWhyIcon" aria-hidden="true">🤍</div>
+            <h2 class="lmWhyTitle">Beautifully Designed</h2>
+            <p class="lmWhyText">A warm parchment-inspired experience that makes family history feel timeless.</p>
+          </article>
+
+          <article class="lmWhyCard">
+            <div class="lmWhyIcon" aria-hidden="true">🌳</div>
+            <h2 class="lmWhyTitle">Built For Generations</h2>
+            <p class="lmWhyText">Preserve your story in a format your children and grandchildren can explore.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="lmBottomCta" aria-label="Call to action">
+        <h2 class="lmBottomTitle">Your story deserves to be preserved</h2>
+        <a class="lmCta" href="{{ url_for('register') }}">Create Your Family Map</a>
+      </section>
 
     </div>
   </div>

@@ -1,822 +1,379 @@
-/* topbar.css
-   Universal topbar + nav controls + buttons + auth badge
-   MOBILE FIRST: big brand scroll on left + actions; hide center links
-   DESKTOP: restore center links + grand scroll
-
-   Alignment goal:
-   - Brand aligns with the same left edge as main.page (layout.css):
-     main.page { max-width: var(--content-max); margin: 0 auto; padding: 16px var(--page-pad) 26px; }
-   - So topbar-inner MUST use padding-left/right: var(--page-pad)
-
-   Scale goal:
-   - Brand scales proportionally (no fixed billboard sizing) using clamp().
-
-   Mobile grid goal:
-   - When center links are hidden on mobile, collapse the grid to 2 columns (brand + right)
-     so the right controls don't get shoved by an empty center column.
-*/
-
-:root{
-  /* Match main.page exactly */
-  --shell-gutter-left: var(--page-pad);
-  --shell-gutter-right: var(--page-pad);
-
-  /* Proportional scaling (bounded) */
-  --brand-rail: clamp(180px, 24vw, 320px);
-  /* Logo can never be taller than the topbar's inner space */
-  --brand-height: clamp(83px, 6.2vw, calc(var(--topbar-h) ));
-
-  /* Proportional hang */
-  --brand-overhang: clamp(10px, 1.6vw, 18px);
-
-  /* Fine-tune position */
-  --brand-nudge-x: clamp(-12px, -2.2vw, -45px);
-  --brand-nudge-y: 0px;    /* negative = closer to top */
-
-  --topbar-h: clamp(64px, 8vw, 78px);
-}
-
-.topbar{
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  /* add this */
-  position: sticky;
-
-  height: var(--topbar-h);
-  display: flex;
-  align-items: center;
-
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.38), rgba(255,255,255,0.10)),
-    url("../img/paper-texture-light.jpg") center/cover,
-    var(--nav-bg);
-
-  backdrop-filter: blur(6px);
-  border-bottom: 1px solid var(--nav-border);
-
-  /*prevent horizontal push */
-  overflow-y: visible;
-  overflow-x: clip;
-}
-
-/* Subtle ornamental rule at the bottom of the nav */
-.topbar::after{
-  content:"";
-  position:absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 18px;
-  pointer-events:none;
-  opacity: .55;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: min(1200px, 92vw) 18px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='18' viewBox='0 0 1200 18'%3E%3Cg fill='none' stroke='%237a5a3c' stroke-opacity='.38' stroke-width='1'%3E%3Cpath d='M0 9 H520'/%3E%3Cpath d='M680 9 H1200'/%3E%3Cpath d='M600 3 L606 9 L600 15 L594 9 Z'/%3E%3Cpath d='M578 9 C584 4.5 590 4.5 600 9 C590 13.5 584 13.5 578 9 Z'/%3E%3Cpath d='M622 9 C616 4.5 610 4.5 600 9 C610 13.5 616 13.5 622 9 Z'/%3E%3C/g%3E%3C/svg%3E");
-}
-
-.topbar-inner{
-  display: grid;
-  grid-template-columns: minmax(0, var(--brand-rail)) 1fr auto;
-  grid-template-areas: "left center right";
-  align-items: center;
-  gap: 12px;
-
-  max-width: var(--content-max);
-  margin: 0 auto;
-
-  /* EXACT match to main.page left/right padding */
-  padding: 10px var(--shell-gutter-left) 10px var(--shell-gutter-right);
-}
-
-.topbar-left  { grid-area: left; }
-.topbar-links { grid-area: center; }
-.topbar-right {
-  grid-area: right;
-  justify-self: end;
-  min-width: 0;
-}
-
-/* LEFT slot stays on the far-left; allow logo to sit higher */
-.topbar-left{
-  display:flex;
-  align-items:center;
-  align-self: center;
-  justify-self: start;
-  min-width: 0;
-}
-
-/* ------------------------------------------------------------
-   Brand: proportional scaling
------------------------------------------------------------- */
-.brandIcon{
-  display:block;
-  width: 100%;
-  height: var(--brand-height);
-  position: relative;
-  line-height: 0;
-  overflow: visible;
-
-  margin-left: 0;
-  transform: translateX(var(--brand-nudge-x)) translateY(var(--brand-nudge-y));
-}
-
-.brandMark{
-  display:block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
-
-  filter:
-    drop-shadow(0 10px 16px rgba(20,12,6,.16))
-    drop-shadow(0 1px 0 rgba(255,255,255,.55));
-}
-
-/* ------------------------------------------------------------
-   Brand title (subtle nostalgic frame)
------------------------------------------------------------- */
-.brandTitle{
-  font-family: var(--serif);
-  font-weight: 900;
-  letter-spacing: .2px;
-  color: rgba(60, 40, 25, 0.92);
-  text-decoration: none;
-  font-size: var(--brand-font);
-  line-height: 1;
-  white-space: nowrap;
-
-  position: relative;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.14);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
-}
-
-.brandTitle::before,
-.brandTitle::after{
-  content: "";
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 1px;
-  opacity: .55;
-  background: linear-gradient(
-    to right,
-    rgba(0,0,0,0),
-    rgba(90,60,40,0.35),
-    rgba(0,0,0,0)
-  );
-  width: 18px;
-}
-
-.brandTitle::before{ left: -20px; }
-.brandTitle::after{ right: -20px; }
-
-.brandTitle span{ display:inline-block; }
-
-.brandTitle:focus-visible{
-  outline: 2px solid rgba(176,128,58,0.35);
-  outline-offset: 3px;
-}
-
-/* Mobile default: hide nav links */
-.topbar-links{ display:none; }
-
-.topbar-right{
-  display: inline-flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: .6rem;
-  flex-wrap: nowrap;
-}
-
-/* =========================================================
-   Mobile hamburger + dropdown nav
-   ========================================================= */
-.navToggle{
-  display: inline-flex;
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  border: 1px solid rgba(90, 60, 40, 0.22);
-  background: rgba(255,255,255,0.30);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
-  cursor: pointer;
-  align-items: center;
-  justify-content: center;
-}
-@media (hover:hover){
-  .navToggle:hover{ filter: brightness(1.03); transform: translateY(-1px); }
-}
-
-/* simple 3-line icon */
-.navToggleIcon{
-  width: 18px;
-  height: 2px;
-  background: rgba(60,40,25,0.78);
-  border-radius: 2px;
-  position: relative;
-  display: block;
-}
-.navToggleIcon::before,
-.navToggleIcon::after{
-  content:"";
-  position: absolute;
-  left: 0;
-  width: 18px;
-  height: 2px;
-  background: rgba(60,40,25,0.78);
-  border-radius: 2px;
-}
-.navToggleIcon::before{ top: -6px; }
-
-
-/* dropdown panel (closed by default) */
-.mobileNav{
-  display: none !important;
-
-  /* overlay dropdown (does not push layout) */
-  position: absolute;
-  top: 100%;
-  left: auto !important;
-  right: var(--page-pad) !important;
-
-  /* compact panel */
-  width: min(120px, calc(100vw - (var(--page-pad) * 2)));
-  margin: 0;
-  padding: 5px;
-
-  z-index: 1100;
-
-  /* easy-to-see surface */
-  background: rgba(255,255,255,0.88);
-  backdrop-filter: blur(10px);
-
-  border: 1px solid rgba(90,60,40,.22);
-  border-radius: 16px;
-  box-shadow: 0 16px 30px rgba(25,18,10,.18);
-}
-
-.mobileNav.open{
-  display: block !important;
-}
-
-/* link pills (compact + readable) */
-.mobileNav a{
-  display: block;
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px 12px;
-
-  text-decoration: none;
-  font-family: var(--serif);
-  font-weight: 900;
-  color: rgba(60, 40, 25, 0.90);
-
-  background: rgba(250,246,238,0.95);
-  border: 1px solid rgba(90, 60, 40, 0.18);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.70);
-}
-
-.mobileNav a:first-child{ margin-top: 0; }
-
-.mobileNav a.is-active{
-  background: rgba(214,170,90,0.20);
-  border-color: rgba(120,80,40,0.28);
-}
-
-
-.mobileNav.open{
-  display: block !important;
-}
-
-.mobileNav a.is-active{
-  background: rgba(255,255,255,0.45);
-  border-color: rgba(90, 60, 40, 0.22);
-  color: rgba(60, 40, 25, 0.94);
-}
-
-/* Buttons */
-.btn{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--btn-pad-y) var(--btn-pad-x);
-  border-radius: 999px;
-  font-family: var(--serif);
-  font-weight: 900;
-  font-size: var(--btn-font);
-  text-decoration: none;
-  border: 1px solid rgba(90, 60, 40, 0.22);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
-  white-space: nowrap;
-}
-
-.btn.ghost{
-  background: rgba(255,255,255,0.35);
-  color: rgba(60,40,25,0.88);
-}
-.btn.primary{
-  background: linear-gradient(180deg, rgba(214,170,90,0.95), rgba(176,128,58,0.95));
-  color: rgba(35,22,12,0.92);
-  border-color: rgba(120,80,40,0.35);
-}
-
-@media (hover:hover){
-  .btn:hover{ filter: brightness(1.03); transform: translateY(-1px); }
-}
-
-/* Auth badge */
-.authLinks{ display:flex; gap:8px; align-items:center; }
-.userBadge{
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.35);
-  border: 1px solid rgba(90, 60, 40, 0.18);
-  color: rgba(60,40,25,0.85);
-}
-.userBadge .dot{
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(176,128,58,0.95);
-  box-shadow: 0 0 0 3px rgba(176,128,58,0.18);
-}
-.userBadge .email{
-  font-weight: 900;
-  font-size: 12px;
-  opacity: .88;
-  overflow:hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 190px;
-}
-.userBadge .logoutLink{
-  font-weight: 900;
-  font-size: 12px;
-  text-decoration: none;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(120,92,70,.22);
-  background: rgba(110,80,58,.10);
-}
-@media (hover:hover){
-  .userBadge .logoutLink:hover{ background: rgba(110,80,58,.18); }
-}
-
-.logoutLink{
-  color: rgba(60,40,25,0.88);
-  text-decoration: none;
-  font-weight: 900;
-}
-
-/* small screens: hide email earlier if needed */
-@media (max-width: 820px){
-  .demoPicker--nav{ display:none; }
-  .userBadge .email{ display:none; }
-}
-
-/* ------------------------------------------------------------
-   MOBILE: collapse grid to 2 columns (brand + right)
------------------------------------------------------------- */
-@media (max-width: 899px){
-  .topbar-inner{
-    grid-template-areas: "left right";
-    grid-template-columns: minmax(0, var(--brand-rail)) auto;
-  }
-
-  .topbar-links{
-    display: none !important;
-  }
-}
-
-/* Mobile: keep proportional, but protect right-side controls */
-@media (max-width: 520px){
-  :root{
-    --brand-rail: clamp(150px, 48vw, 230px);
-    --brand-height: clamp(74px, 12vw, 92px);
-    --brand-nudge-x: -14px;
-    --brand-nudge-y: 0px;
-  }
-}
-
-/* Ultra small */
-@media (max-width: 360px){
-  :root{
-    --brand-rail: clamp(140px, 52vw, 210px);
-    --brand-height: clamp(58px, 14vw, 86px);
-    --brand-overhang: clamp(6px, 2.4vw, 12px);
-
-    --brand-nudge-x: -10px;
-    --brand-nudge-y: 0px;
-  }
-}
-
-/* slightly wider phones */
-@media (max-width: 480px){
-  .brandTitle{
-    padding: 5px 8px;
-  }
-  .brandTitle::before,
-  .brandTitle::after{
-    width: 12px;
-  }
-  .brandTitle::before{ left: -14px; }
-  .brandTitle::after{ right: -14px; }
-}
-
-/* ultra small */
-@media (max-width: 360px){
-  .brandTitle{
-    padding: 0px 0px;
-    letter-spacing: .15px;
-  }
-  .brandTitle::before,
-  .brandTitle::after{
-    display: none;
-  }
-}
-
-/* ------------------------------------------------------------
-   DESKTOP: restore center nav + hide hamburger/panel
------------------------------------------------------------- */
-@media (min-width: 900px){
-  .topbar-inner{
-    grid-template-columns: minmax(0, var(--brand-rail)) 1fr auto;
-    gap: 14px;
-    padding: 10px var(--shell-gutter-left);
-    padding-right: var(--shell-gutter-right);
-  }
-
-  .topbar-links{ min-width: 0; }
-
-  .topbar-links{
-    display: inline-flex;
-    justify-content: center;
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10000;
+    isolation: isolate;
+    overflow: visible;
+
+    display: flex;
     align-items: center;
-    gap: 26px;
-  }
+    justify-content: space-between;
+    gap: 24px;
 
-  .topbar-links a{
-    font-family: var(--serif);
-    font-weight: 800;
+    height: 84px;
+    padding: 0 28px;
+
+    background:
+        linear-gradient(to bottom, rgba(252, 248, 242, 0.82), rgba(244, 237, 227, 0.84)),
+        url("/static/img/parchment-bg.jpg");
+    background-size: cover;
+    background-position: center;
+
+    border-bottom: 1px solid rgba(124, 96, 67, 0.14);
+    box-shadow:
+        0 3px 12px rgba(63, 44, 29, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.topbar__menu {
+    display: none;
+}
+
+.topbar__menu.open,
+.topbar__menu.is-open {
+    display: block;
+}
+
+.topbar::before {
+    content: "";
+    position: absolute;
+    left: 28px;
+    right: 28px;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+        to right,
+        rgba(154, 123, 91, 0),
+        rgba(154, 123, 91, 0.22) 18%,
+        rgba(154, 123, 91, 0.22) 82%,
+        rgba(154, 123, 91, 0)
+    );
+    pointer-events: none;
+}
+
+.topbar::after {
+    content: "✧";
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translateX(-50%);
+    font-size: 12px;
+    line-height: 1;
+    color: rgba(146, 111, 76, 0.42);
+    pointer-events: none;
+}
+
+.topbar__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
     text-decoration: none;
-    color: rgba(60, 40, 25, 0.78);
-    padding: 8px 10px;
-    border-radius: 12px;
-  }
-
-  @media (hover:hover){
-    .topbar-links a:hover{ background: var(--nav-hover); }
-  }
-
-  .topbar-links a.is-active{
-    color: rgba(60, 40, 25, 0.94);
-    background: rgba(255, 255, 255, 0.45);
-    border: 1px solid rgba(90, 60, 40, 0.18);
-  }
-
-  .navToggle{ display:none; }
-  .mobileNav{ display:none !important; }
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 52%;
+    position: relative;
+    z-index: 10002;
 }
 
-/* ------------------------------------------------------------
-   Demo sample picker (Topbar)
------------------------------------------------------------- */
-.desktopOnly { display: inline-flex; }
-.mobileOnly { display: none; }
-
-@media (max-width: 899px){
-  .desktopOnly { display: none !important; }
-  .mobileOnly { display: inline-flex; }
+.topbar__brand img {
+    display: block;
+    height: 72px;
+    width: auto;
+    max-width: 110px;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 1px rgba(65, 43, 24, 0.18));
 }
 
-/* Make demo picker look like a proper item inside the mobile dropdown */
-.mobileNav .demoPicker{
-  display: flex;
-  width: 100%;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-  padding: 12px 12px;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.28);
-  border: 1px solid rgba(90, 60, 40, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
-  backdrop-filter: blur(6px);
-}
-
-.mobileNav .demoPickerLabel{
-  margin: 0;
-}
-
-.mobileNav .demoPickerSelect{
-  width: auto;
-}
-
-/* Pretty dropdown pill to match parchment/institution vibe */
-.demoPicker{
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  padding: .35rem .6rem;
-  border: 1px solid rgba(60,40,20,.18);
-  background: rgba(255,255,255,.35);
-  border-radius: 999px;
-  backdrop-filter: blur(6px);
-}
-
-.demoPickerLabel{
-  font-size: .85rem;
-  color: rgba(35,25,15,.72);
-  letter-spacing: .02em;
-  white-space: nowrap;
-}
-
-.demoPickerSelect{
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-
-  border: 1px solid rgba(60,40,20,.22);
-  background: rgba(255,255,255,.55);
-  color: rgba(25,18,10,.88);
-
-  padding: .35rem 2.0rem .35rem .7rem;
-  border-radius: 999px;
-  font-size: .9rem;
-  cursor: pointer;
-  outline: none;
-
-  background-image:
-    linear-gradient(45deg, transparent 50%, rgba(50,35,20,.7) 50%),
-    linear-gradient(135deg, rgba(50,35,20,.7) 50%, transparent 50%);
-  background-position:
-    calc(100% - 1.1rem) 55%,
-    calc(100% - .85rem) 55%;
-  background-size: .28rem .28rem, .28rem .28rem;
-  background-repeat: no-repeat;
-}
-
-/* Demo picker visibility rules
-   Frank's requirement: visible 100% of the time.
-   - Desktop: shown in the topbar-right
-   - Mobile: also shown inside the hamburger panel (redundant by design)
-*/
-.demoPicker--nav{ display:flex; align-items:center; gap:8px; }
-.demoPicker--mobile{ display:block; }
-.demoPicker--desktop{ display:flex; align-items:center; gap:8px; }
-
-/* Desktop nav: make the picker feel like a normal menu item (no extra "Select Legacy" pill) */
-.demoPicker--navSimple{
-  padding: 0;
-  border: 0;
-  background: transparent;
-  backdrop-filter: none;
-}
-.demoPicker--navSimple .demoPickerSelect{
-  border: 0;
-  background: transparent;
-  padding: .25rem 1.4rem .25rem .25rem;
-  font-family: var(--serif);
-  font-weight: 800;
-  letter-spacing: .02em;
-}
-
-@media (max-width: 820px){
-  .demoPicker--nav{ display:none; }
-  .demoPicker{
-    padding: .30rem .50rem;
-    gap: .45rem;
-  }
-  .demoPickerLabel{
-    display:none;
-  }
-  .demoPickerSelect{
-    max-width: 150px;
-    padding: .32rem 1.8rem .32rem .65rem;
-    font-size: .88rem;
-  }
-  .demoPickerSelect--compact{
-    height: 34px;
-    border-radius: 999px;
-    padding: 0 10px;
+.topbar__brand span {
+    color: #6a4d38;
+    font-family: "Libre Baskerville", Georgia, serif;
+    font-size: clamp(1.18rem, 0.95rem + 0.75vw, 1.65rem);
     font-weight: 700;
-  }
+    line-height: 1;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
 }
-  .demoPicker--mobile{ display:block; }
 
-  .demoPickerSelect--compact{
-    height: 34px;
+.topbar__nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 10002;
+}
+
+.topbar__nav a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 15px;
     border-radius: 999px;
-    padding: 0 10px;
+    color: #644936;
+    text-decoration: none;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(1.02rem, 0.95rem + 0.25vw, 1.24rem);
     font-weight: 700;
-  }
+    line-height: 1;
+    background: rgba(255, 249, 241, 0.28);
+    border: 1px solid rgba(143, 111, 78, 0.08);
+    transition:
+        color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
 }
 
-/* tighter on very small screens */
-@media (max-width: 480px){
-  .demoPicker{ padding: .28rem .5rem; }
-  .demoPickerLabel{ font-size: .8rem; }
-  .demoPickerSelect{ font-size: .85rem; }
+.topbar__nav a:hover {
+    color: #8f643f;
+    background: rgba(255, 248, 239, 0.82);
+    border-color: rgba(143, 111, 78, 0.16);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        0 2px 8px rgba(78, 54, 33, 0.08);
+    transform: translateY(-1px);
 }
 
-/* tighten right-side spacing on small phones */
-@media (max-width: 460px){
-  .topbar-right{ gap: .45rem; }
-  .topbar-right .btn{ padding: 10px 12px; }
+.topbar__nav a::after {
+    content: "";
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 8px;
+    height: 1px;
+    background: rgba(143, 100, 63, 0.24);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.2s ease;
 }
 
-/* tiny screens: shrink logo rail + controls */
-@media (max-width: 420px){
-  :root{
-    --brand-rail: clamp(118px, 34vw, 165px);
-    --brand-height: clamp(58px, 11vw, 82px);
-    --brand-nudge-x: -10px;
-  }
-
-  .topbar-inner{ gap: 10px; }
-
-  .topbar-right .btn{
-    padding: 10px 14px;
-    font-size: 14px;
-  }
-
-  .navToggle{
-    width: 38px;
-    height: 38px;
-  }
+.topbar__nav a:hover::after {
+    transform: scaleX(1);
 }
 
-/* Dropdown must win every stacking fight */
-.topbar{ z-index: 9999 !important; }
-
-.mobileNav{
-  z-index: 10000 !important;
-  position: absolute !important;
+.topbar__nav a + a::before {
+    content: "•";
+    position: absolute;
+    left: -7px;
+    top: 50%;
+    transform: translateY(-52%);
+    font-size: 11px;
+    color: rgba(146, 111, 76, 0.38);
+    pointer-events: none;
 }
 
-/* Make mobile dropdown narrower (but readable) */
-.mobileNav{
-  width: min(170px, calc(100vw - (var(--page-pad) * 2))) !important;
-  padding: 5px !important;
+.topbar__toggle {
+    display: none;
+    width: 48px;
+    height: 48px;
+    margin-left: auto;
+    border: 1px solid rgba(122, 93, 66, 0.22);
+    border-radius: 999px;
+    background: #f9f2e9;
+    box-shadow:
+        0 4px 12px rgba(67, 46, 29, 0.10),
+        inset 0 1px 0 rgba(255,255,255,0.75);
+    cursor: pointer;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10003;
+    pointer-events: auto;
 }
 
-/* Slightly tighter link pills */
-.mobileNav a{
-  padding: 9px 10px !important;
+.topbar__toggle span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    border-radius: 999px;
+    background: #7a5a43;
 }
 
-/* keep right cluster tight, don't stretch the grid cell */
-.topbar-right{
-  width: auto;
-  justify-self: end;
+@media (max-width: 1100px) {
+    .topbar {
+        height: 78px;
+        padding: 0 22px;
+        gap: 18px;
+    }
+
+    .topbar__brand {
+        gap: 12px;
+        max-width: 46%;
+    }
+
+    .topbar__brand span {
+        font-size: clamp(1.6rem, 1.25rem + 0.9vw, 2.1rem);
+    }
+
+    .topbar__nav {
+        gap: 8px;
+    }
+
+    .topbar__nav a {
+        padding: 0 12px;
+        min-height: 40px;
+    }
 }
 
-/* push hamburger to the far right within the flex row */
-.topbar-right{
-  display: inline-flex;
-}
-.navToggle{
-  margin-left: .4rem; /* small, consistent */
-}
+@media (max-width: 900px) {
+    .topbar {
+        height: 72px;
+        padding: 0 18px;
+        gap: 14px;
+    }
 
-/* ================================
-   Mobile dropdown: visible on parchment
-=================================== */
-.mobileNav{
-  background: rgba(252, 249, 244, 0.98) !important;
-  border: 1px solid rgba(70, 50, 36, 0.28) !important;
-  box-shadow:
-    0 22px 44px rgba(20, 14, 10, 0.28),
-    0 2px 0 rgba(255,255,255,0.65) inset !important;
+    .topbar__brand {
+        max-width: 42%;
+    }
 
-  backdrop-filter: blur(6px) !important;
-  -webkit-backdrop-filter: blur(6px) !important;
-}
+    .topbar__brand span {
+        font-size: clamp(1.05rem, 0.92rem + 0.55vw, 1.35rem);
+    }
 
-.mobileNav a{
-  background: rgba(255, 255, 255, 0.62) !important;
-  border: 1px solid rgba(70, 50, 36, 0.18) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.75),
-    0 1px 0 rgba(30,20,10,0.06) !important;
+    .topbar__nav a {
+        font-size: 1.05rem;
+        padding: 0 10px;
+    }
 }
 
-@media (hover:hover){
-  .mobileNav a:hover{
-    background: rgba(214, 186, 120, 0.30) !important;
-    border-color: rgba(70, 50, 36, 0.28) !important;
-  }
+@media (max-width: 768px) {
+    .topbar {
+        height: 72px;
+        padding: 0 14px;
+        gap: 10px;
+    }
+
+    .topbar::before {
+        left: 14px;
+        right: 14px;
+    }
+
+    .topbar::after {
+        bottom: 5px;
+        font-size: 11px;
+    }
+
+    .topbar__brand {
+        gap: 10px;
+        max-width: calc(100% - 62px);
+    }
+
+    .topbar__brand img {
+        height: 62px;
+        max-width: 74px;
+    }
+
+    .topbar__brand span {
+        font-size: clamp(1rem, 0.9rem + 0.45vw, 1.2rem);
+    }
+
+    .topbar__nav {
+        display: none;
+    }
+
+    .topbar__toggle {
+        display: inline-flex;
+        width: 46px;
+        height: 46px;
+    }
+
+    .topbar__menu {
+        position: fixed;
+        top: 78px;
+        right: 14px;
+        width: min(252px, calc(100vw - 28px));
+        padding: 10px;
+        border-radius: 18px;
+        border: 1px solid #d7c6b2;
+        background: #efe5d8;
+        box-shadow:
+            0 18px 34px rgba(52, 36, 24, 0.24),
+            0 6px 14px rgba(52, 36, 24, 0.12);
+        z-index: 10004;
+    }
+
+    .topbar__menu::after {
+        content: "";
+        position: absolute;
+        top: -7px;
+        right: 16px;
+        width: 14px;
+        height: 14px;
+        background: #efe5d8;
+        border-top: 1px solid #d7c6b2;
+        border-left: 1px solid #d7c6b2;
+        transform: rotate(45deg);
+    }
+
+    .topbar__menu a {
+        display: block;
+        width: 100%;
+        margin: 0 0 8px 0;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #ddd0bf;
+        background: #f7f1e8;
+        color: #5a4130;
+        text-decoration: none;
+        font-family: "Cormorant Garamond", Georgia, serif;
+        font-size: 1.12rem;
+        font-weight: 600;
+        line-height: 1.1;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
+    }
+
+    .topbar__menu a:last-child {
+        margin-bottom: 0;
+    }
+
+    .topbar__menu a:hover,
+    .topbar__menu a:focus-visible {
+        background: #f1e6d8;
+        border-color: #cfbca6;
+        color: #4b3628;
+    }
 }
 
-.mobileNav a:focus-visible{
-  outline: 2px solid rgba(178, 129, 58, 0.65);
-  outline-offset: 2px;
+@media (max-width: 480px) {
+    .topbar {
+        height: 68px;
+        padding: 0 12px;
+    }
+
+    .topbar__brand {
+        max-width: calc(100% - 58px);
+        gap: 8px;
+    }
+
+    .topbar__brand span {
+        font-size: 1.05rem;
+        letter-spacing: 0;
+    }
+
+    .topbar__toggle {
+        width: 44px;
+        height: 44px;
+    }
+
+    .topbar__menu {
+        top: 74px;
+        right: 12px;
+        width: min(244px, calc(100vw - 24px));
+    }
 }
 
-.mobileNav .demoPicker{
-  background: rgba(255,255,255,0.42) !important;
-  border: 1px solid rgba(70, 50, 36, 0.18) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.70) !important;
+@media (min-width: 769px) {
+    .topbar__menu {
+        display: none !important;
+    }
 }
-
-/* ------------------------------------------------------------------
-   Demo family toggle (button + dropdown)
-------------------------------------------------------------------- */
-
-.demoPicker--toggle{
-  position: relative;
-}
-
-.familyToggle{
-  padding: 9px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(78,57,40,.22);
-  background: rgba(255,255,255,.32);
-  color: var(--ink);
-  font-weight: 800;
-  letter-spacing: .2px;
-}
-
-.familyToggle:hover{
-  background: rgba(255,255,255,.45);
-}
-
-.familyPanel{
-  position: absolute;
-  right: 0;
-  top: calc(100% + 10px);
-  width: 220px;
-  border-radius: 16px;
-  border: 1px solid rgba(78,57,40,.22);
-  background: rgba(250,245,236,.96);
-  box-shadow: 0 18px 40px rgba(40,25,15,.16);
-  padding: 10px;
-  display: none;
-  z-index: 80;
-}
-
-.familyPanel.open{
-  display: block;
-}
-
-.familyPanelInner{
-  display: grid;
-  gap: 8px;
-}
-
-.familyPanelLabel{
-  font-size: .85rem;
-  opacity: .85;
-  font-weight: 800;
-}
-
-.familyPanel--mobile{
-  position: static;
-  width: 100%;
-  margin-top: 8px;
-  display: none;
-}
-
-.familyPanel--mobile.open{
-  display: block;
-}
-
-.familyToggleMobile{
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(78,57,40,.20);
-  background: rgba(255,255,255,.28);
-  color: var(--ink);
-  font-weight: 900;
-  letter-spacing: .2px;
-  text-align: left;
-}
-
-
-/* -----------------------------
-   TOPBAR RIGHT FLEX (ensure legacy picker visible)
------------------------------- */
-.topbar-right{
-  display:flex;
-  align-items:center;
-  gap: 10px;
-  flex-wrap: nowrap;
-}
-
-@media (max-width: 720px){
-  /* Keep Select Legacy visible in topbar; move Explore into the hamburger list */
-  .topbar-right .btn.ghost{ display:none; }
-  .demoPickerLabel{ display:none !important; }
-  .demoPickerSelect{ max-width: 150px; }
-}
-
-.demoPicker--desktop{ display:flex !important; }

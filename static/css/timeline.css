@@ -544,3 +544,50 @@
   }
 }
 
+
+
+/* Embedded timeline preview on landing page */
+.timelineEmbed.appFrameShell,
+.timelineEmbed.appFrameCard,
+.appFrameShell.timelineEmbed,
+.appFrameCard.timelineEmbed,
+.timelineEmbed .tlShell,
+.timelineEmbed .tlTop {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+.timelineEmbed.appFrameShell,
+.appFrameShell.timelineEmbed {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.timelineEmbed.appFrameCard,
+.appFrameCard.timelineEmbed {
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: auto !important;
+  background: transparent !important;
+}
+
+.timelineEmbed .pillTitle,
+.timelineEmbed .tlTop,
+.timelineEmbed .tlTitle,
+.timelineEmbed .tlStatus {
+  display: none !important;
+}
+
+.timelineEmbed .tlShell {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.timelineEmbed .tlSnakeRoot,
+.timelineEmbed .tlSnakeCards,
+.timelineEmbed .tlSnakeSvg {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}

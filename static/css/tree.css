@@ -208,3 +208,46 @@
     gap: 10px;
   }
 }
+
+
+/* Embedded tree preview on landing page */
+.treeEmbed.appFrameShell,
+.treeEmbed.appFrameCard,
+.appFrameShell.treeEmbed,
+.appFrameCard.treeEmbed,
+.treeEmbed .treePageHeader,
+.treeEmbed .treeToolbar {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+.treeEmbed.appFrameShell,
+.appFrameShell.treeEmbed {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.treeEmbed.appFrameCard,
+.appFrameCard.treeEmbed {
+  padding: 0 !important;
+  margin: 0 !important;
+  min-height: auto !important;
+  background: transparent !important;
+}
+
+.treeEmbed .treePageHeader {
+  display: none !important;
+}
+
+.treeEmbed .treeCanvas {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.treeEmbed #treeSvg,
+.treeEmbed .treeCanvas svg {
+  background: transparent !important;
+}

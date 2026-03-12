@@ -63,47 +63,40 @@ html, body{
   overflow-x: hidden; /* prevent phantom right padding/overflow on mobile */
 }
 
+
+
 body{
-  margin:0;
+  margin: 0;
   font-family: var(--serif);
   color: var(--ink);
 
-  /* Real parchment is MULTI-LAYER, not a flat fill */
   background:
-    /* vignette (gives depth + “aged edges”) */
     radial-gradient(circle at center,
-      rgba(0,0,0,0) 55%,
-      rgba(120, 90, 50, 0.12) 100%
+      rgba(0,0,0,0) 58%,
+      rgba(120, 90, 50, 0.08) 100%
     ),
-
-    /* warm bloom */
     radial-gradient(circle at 28% 18%,
-      rgba(255, 250, 240, 0.38),
+      rgba(255, 250, 240, 0.18),
       rgba(0,0,0,0) 60%
     ),
-
-    /* subtle vertical paper variation */
     linear-gradient(
       to bottom,
-      #f3e7d9 0%,
-      #e9dccd 50%,
-      #f3e7d9 100%
+      rgba(255,255,255,0.18),
+      rgba(255,255,255,0.18)
     ),
-
-    /* paper texture */
-    url("../img/paper-texture-light.jpg");
+    url("../img/parchment-bg.jpg");
 
   background-blend-mode:
     normal,
-    multiply,
+    soft-light,
     normal,
-    overlay;
+    normal;
 
   background-size:
     cover,
     cover,
     cover,
-    900px;
+    cover;
 
   background-position:
     center,
@@ -116,8 +109,10 @@ body{
 
   position: relative;
   isolation: isolate;
-  overflow-x: hidden; /* prevent background layers / ornaments from causing side-scroll */
+  overflow-x: hidden;
 }
+
+
 
 a{ color: inherit; }
 img{ max-width:100%; height:auto; display:block; }
@@ -167,9 +162,9 @@ img{ max-width:100%; height:auto; display:block; }
   border-radius: 18px;
   padding: 22px 18px 18px;
   text-align: center;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.55), rgba(235,218,190,.18)),
-    url("../img/paper-texture-light.jpg") center/cover;
+background:
+  linear-gradient(180deg, rgba(255,255,255,.62), rgba(235,218,190,.22)),
+  url("../img/parchment-bg.jpg") center/cover;
   border: 1px solid rgba(130,92,58,.26);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.70),
@@ -215,10 +210,9 @@ img{ max-width:100%; height:auto; display:block; }
   font-weight: 800;
   color: rgba(55,35,20,.86);
   border: 1px solid rgba(130,92,58,.26);
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.55), rgba(235,218,190,.18)),
-    url("../img/paper-texture-light.jpg") center/cover;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.70);
+background:
+  linear-gradient(180deg, rgba(255,255,255,.68), rgba(235,218,190,.20)),
+  url("../img/parchment-bg.jpg") center/cover;
 }
 .ucBtn:hover{ transform: translateY(-1px); }
 .ucNote{

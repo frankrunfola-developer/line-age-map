@@ -1,89 +1,35 @@
-{# -----------------------------------------------------------------------------
-File: templates/_topbar.html
-Purpose: Universal topbar (compatible with static/js/nav.js)
+<header class="topbar">
+  <a href="/" class="topbar__brand" aria-label="LineAgeMap home">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="LineAgeMap logo">
+    <span>LineAgeMap</span>
+  </a>
 
-JS expects:
-- button#navbtn
-- div#navpanel
-- select#demoFamilySelect (desktop)
-- select#demoFamilySelectMobile (mobile)
------------------------------------------------------------------------------ #}
+  <nav class="topbar__nav" aria-label="Primary">
+    <a href="/tree">Tree</a>
+    <a href="/timeline">Timeline</a>
+    <a href="/map">Map</a>
+    <a href="/explore-legacies">Explore Legacies</a>
+    <a href="/get-started">Get Started</a>
+  </nav>
 
-{% set sid = (sample_id or "stark")|lower %}
+  <button
+    id="navButton"
+    class="topbar__toggle"
+    type="button"
+    aria-label="Open menu"
+    aria-expanded="false">
 
-<header class="topbar" role="banner">
-  <div class="topbar-inner">
+    <span></span>
+    <span></span>
+    <span></span>
 
-    <!-- LEFT -->
-    <div class="topbar-left">
-      <a class="brandIcon" href="{{ url_for('index') }}" data-preserve-sample="1" aria-label="LineAgeMap home">
-        <img class="brandMark" src="{{ url_for('static', filename='img/logo.png') }}" alt="LineAgeMap" />
-      </a>
-    </div>
+  </button>
 
-    <!-- CENTER (desktop links only; hidden on mobile via CSS) -->
-    <nav class="topbar-links" aria-label="Primary">
-      <a href="{{ url_for('tree_view') }}" data-preserve-sample="1"
-        class="{{ 'is-active' if request.path == '/tree' else '' }}">Tree</a>
-
-      <a href="{{ url_for('timeline_view') }}" data-preserve-sample="1"
-        class="{{ 'is-active' if request.path == '/timeline' else '' }}">Timeline</a>
-
-      <a href="{{ url_for('map_view') }}" data-preserve-sample="1"
-        class="{{ 'is-active' if request.path == '/map' else '' }}">Map</a>
-
-      <div class="demoPicker demoPicker--nav demoPicker--navSimple">
-        <label class="srOnly" for="demoFamilySelectNav">Select Legacy</label>
-        <select id="demoFamilySelectNav" class="demoPickerSelect demoPickerSelect--button" aria-label="Select Legacy">
-          {% for k in demo_samples %}
-          <option value="{{ k }}" {{ 'selected' if sid == k else '' }}>{{ demo_sample_labels[k] }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </nav>
-
-    <!-- RIGHT -->
-    <div class="topbar-right"><a class="btn ghost" href="{{ url_for('explore_legacies_view') }}" data-preserve-sample="1">Explore Legacies</a>
-
-      {% if current_user %}
-      <div class="authLinks">
-        <div class="userBadge" title="{{ current_user.email }}">
-          <span class="dot" aria-hidden="true"></span>
-          <span class="email">{{ current_user.email }}</span>
-          <a class="logoutLink" href="{{ url_for('logout') }}">Logout</a>
-        </div>
-      </div>
-      {% else %}
-      <a class="btn primary" href="{{ url_for('register') }}">Get Started</a>
-      {% endif %}
-
-      <!-- Hamburger (nav.js expects #navbtn) -->
-      <button id="navbtn" class="navToggle" type="button" aria-label="Menu" aria-expanded="false">
-        <span class="navToggleIcon" aria-hidden="true"></span>
-      </button>
-
-    </div>
+  <div id="navPanel" class="topbar__menu" aria-label="Mobile menu">
+    <a href="/tree">Tree</a>
+    <a href="/timeline">Timeline</a>
+    <a href="/map">Map</a>
+    <a href="/explore-legacies">Explore Legacies</a>
+    <a href="/get-started">Get Started</a>
   </div>
-
-  <!-- Mobile dropdown panel (nav.js expects #navpanel) -->
-  <div class="mobileNav" id="navpanel" aria-label="Mobile menu">
-    <a href="{{ url_for('tree_view') }}" data-preserve-sample="1"
-      class="{{ 'is-active' if request.path == '/tree' else '' }}">Tree</a>
-
-    <a href="{{ url_for('timeline_view') }}" data-preserve-sample="1"
-      class="{{ 'is-active' if request.path == '/timeline' else '' }}">Timeline</a>
-
-    <a href="{{ url_for('explore_legacies_view') }}" data-preserve-sample="1"
-      class="{{ 'is-active' if request.path == '/explore_legacies_view' else '' }}">Explore Legacies</a>
-
-    <a href="{{ url_for('map_view') }}" data-preserve-sample="1"
-      class="{{ 'is-active' if request.path == '/map' else '' }}">Map</a><div class="demoPicker demoPicker--mobile">
-      <span class="demoPickerLabel">Select Legacy</span>
-      <label class="srOnly" for="demoFamilySelectMobile">Select Legacy</label>
-      <select id="demoFamilySelectMobile" class="demoPickerSelect demoPickerSelect--button demoPickerSelect--compact" aria-label="Select Legacy">
-        {% for k in demo_samples %}
-        <option value="{{ k }}" {{ 'selected' if sid == k else '' }}>{{ demo_sample_labels[k] }}</option>
-        {% endfor %}
-      </select>
-    </div></div>
 </header>

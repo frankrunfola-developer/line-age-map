@@ -1,17 +1,19 @@
 {% extends "base.html" %}
 {% set active_page = "tree" %}
+{% set is_embed = request.args.get('embed') == '1' %}
 
 {% block title %}LineAgeMap — Tree{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tree.css') }}?v={{ time.time() }}">
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tree.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="appFrameShell treePageShell">
-  <section class="appFrameCard treePageCard" aria-label="Family Tree">
+<div class="appFrameShell treePageShell {% if is_embed %}treeEmbed{% endif %}">
+  <section class="appFrameCard treePageCard {% if is_embed %}treeEmbed{% endif %}" aria-label="Family Tree">
     <header class="treePageHeader">
-      {% if request.args.get('embed') != '1' %}
+      {% if not is_embed %}
       <div class="treeToolbar" role="group" aria-label="Tree controls">
         <button id="treeDepthToggleBtn" class="treeToolbarBtn" type="button">See Full Tree</button>
         <button id="fitTreeBtn" class="treeToolbarBtn" type="button">Fit to screen</button>
@@ -19,10 +21,7 @@
       {% endif %}
     </header>
 
-    <div
-      id="treeCanvas"
-      class="treeCanvas"
-      data-tree-api-url="{{ tree_api_url or TREE_API_URL or '/api/sample/stark/tree' }}">
+    <div id="treeCanvas" class="treeCanvas">
       <svg id="treeSvg" role="img" aria-label="Family tree diagram"></svg>
     </div>
   </section>
@@ -30,8 +29,17 @@
 {% endblock %}
 
 {% block scripts %}
+{% if public_slug %}
+{% set TREE_API_URL = "/api/public/" ~ public_slug ~ "/tree" %}
+{% elif sample_id %}
+{% set TREE_API_URL = "/api/sample/" ~ sample_id ~ "/tree" %}
+{% elif current_user %}
+{% set TREE_API_URL = "/api/tree/me" %}
+{% else %}
+{% set TREE_API_URL = "/api/sample/stark/tree" %}
+{% endif %}
 <script>
-  window.TREE_API_URL = {{ (tree_api_url or TREE_API_URL or '/api/sample/stark/tree')|tojson }};
+  window.TREE_API_URL = "{{ TREE_API_URL }}";
 </script>
-<script type="module" src="{{ url_for('static', filename='js/tree.js') }}?v={{ time.time() }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/tree.js') }}"></script>
 {% endblock %}

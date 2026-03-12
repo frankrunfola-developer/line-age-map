@@ -1,126 +1,51 @@
-(function () {
-  "use strict";
+document.addEventListener("DOMContentLoaded", function () {
+    const button = document.getElementById("navButton");
+    const panel = document.getElementById("navPanel");
 
-  function titleCase(s){
-    s = String(s || "").trim();
-    if (!s) return s;
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
+    if (!button || !panel) return;
 
-
-  // ---------------------------
-  // Mobile hamburger menu
-  // ---------------------------
-  var btn = document.getElementById("navbtn");
-  var panel = document.getElementById("navpanel");
-  if (btn && panel) {
     function closeMenu() {
-      btn.setAttribute("aria-expanded", "false");
-      panel.classList.remove("open");
+        panel.classList.remove("open", "is-open");
+        button.setAttribute("aria-expanded", "false");
     }
 
-    btn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      var open = btn.getAttribute("aria-expanded") === "true";
-      btn.setAttribute("aria-expanded", open ? "false" : "true");
-      panel.classList.toggle("open", !open);
-    });
-
-    document.addEventListener("click", function (e) {
-      if (!panel.classList.contains("open")) return;
-      if (panel.contains(e.target) || btn.contains(e.target)) return;
-      closeMenu();
-    });
-
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") closeMenu();
-    });
-  }
-
-  // ---------------------------
-  // Demo family sample handling
-  // ---------------------------
-  function getSampleFromUrl() {
-    var u = new URL(window.location.href);
-    return (u.searchParams.get("sample") || "").toLowerCase();
-  }
-
-  function setSampleInUrl(nextSample) {
-    var u = new URL(window.location.href);
-
-    if (!nextSample) {
-      u.searchParams.delete("sample");
-    } else {
-      u.searchParams.set("sample", nextSample);
+    function openMenu() {
+        panel.classList.add("open");
+        button.setAttribute("aria-expanded", "true");
     }
 
-    // preserve hash
-    window.location.href = u.toString();
-  }
+    function toggleMenu(event) {
+        event.preventDefault();
+        event.stopPropagation();
 
-  // Update all links marked to preserve sample
-  function applySampleToLinks(sample) {
-    var links = document.querySelectorAll('a[data-preserve-sample="1"]');
-    links.forEach(function (a) {
-      try {
-        var href = a.getAttribute("href");
-        if (!href) return;
+        const isOpen = panel.classList.contains("open") || panel.classList.contains("is-open");
 
-        // ignore external links
-        if (/^https?:\/\//i.test(href)) return;
+        if (isOpen) {
+            closeMenu();
+        } else {
+            openMenu();
+        }
+    }
 
-        var u = new URL(href, window.location.origin);
+    button.addEventListener("click", toggleMenu);
 
-        if (sample) u.searchParams.set("sample", sample);
-        else u.searchParams.delete("sample");
-
-        a.setAttribute("href", u.pathname + (u.search ? u.search : "") + (u.hash ? u.hash : ""));
-      } catch (e) {
-        // no-op
-      }
+    panel.addEventListener("click", function (event) {
+        event.stopPropagation();
     });
-  }
 
-  // Wire desktop + mobile selects (if present)
-  function wireDemoSelect(id) {
-    var sel = document.getElementById(id);
-    if (!sel) return;
-
-    sel.addEventListener("change", function () {
-      var next = (sel.value || "").toLowerCase();
-      setSampleInUrl(next);
+    document.addEventListener("click", function () {
+        closeMenu();
     });
-  }
 
-  var sample = getSampleFromUrl();
-  applySampleToLinks(sample);
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+            closeMenu();
+        }
+    });
 
-  // Keep both pickers in sync with URL
-  var desktopSel = document.getElementById("demoFamilySelect");
-  var navSel = document.getElementById("demoFamilySelectNav");
-  var mobileSel = document.getElementById("demoFamilySelectMobile");
-  if (desktopSel && sample) desktopSel.value = sample;
-  if (navSel && sample) navSel.value = sample;
-  if (mobileSel && sample) mobileSel.value = sample;
-
-  // If no sample param and picker exists, default to stark WITHOUT forcing redirect
-  // (we only update links so previews/nav are correct)
-  if (!sample) {
-    var fallback = "";
-    if (desktopSel) fallback = desktopSel.value;
-    else if (navSel) fallback = navSel.value;
-    else if (mobileSel) fallback = mobileSel.value;
-    sample = (fallback || "stark").toLowerCase();
-    applySampleToLinks(sample);
-  }
-
-
-
-  // ---------------------------
-  // Demo family toggle UI (button -> dropdown panel)
-  // ---------------------------
-
-  wireDemoSelect("demoFamilySelect");
-  wireDemoSelect("demoFamilySelectNav");
-  wireDemoSelect("demoFamilySelectMobile");
-})();
+    window.addEventListener("resize", function () {
+        if (window.innerWidth > 768) {
+            closeMenu();
+        }
+    });
+});
