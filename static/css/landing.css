@@ -314,7 +314,8 @@
 .landingPage .lmWhyGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(14px, 1.8vw, 20px);
+  gap: clamp(10px, 1.2vw, 16px);
+  align-items: stretch;
 }
 
 .landingPage .lmWhyCard {
@@ -357,10 +358,8 @@
 
 @media (max-width: 980px) {
   .landingPage .lmWhyGrid {
-    max-width: 720px;
-    margin-left: auto;
-    margin-right: auto;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
   }
 
   .landingPage .lmFeatureMedia {
@@ -386,42 +385,36 @@
   }
 }
 
-@media (max-width: 680px) {
-  .landingPage .landing {
-    padding-top: 12px;
-  }
+.landingPage .lmWhy {
+  padding-left: 4px;
+  padding-right: 4px;
+}
 
-  .landingPage .lmKicker {
-    gap: 8px;
-    letter-spacing: 0.12em;
-  }
+.landingPage .lmWhyGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
 
-  .landingPage .lmKicker::before,
-  .landingPage .lmKicker::after {
-    width: 36px;
-  }
+.landingPage .lmWhyCard {
+  padding: 12px 10px 14px;
+  border-radius: 16px;
+}
 
-  .landingPage .lmSubcopy {
-    max-width: 20ch;
-    font-size: clamp(12px, 3.4vw, 15px);
-    line-height: 1.38;
-  }
+.landingPage .lmWhyIcon {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
 
-  .landingPage .lmFeatureMedia {
-    height: 220px;
-    padding: 10px 10px 0;
-  }
+.landingPage .lmWhyTitle {
+  font-size: clamp(14px, 2.5vw, 19px);
+  line-height: 1.2;
+}
 
-  .landingPage .lmSectionHead {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .landingPage .lmOrnRule {
-    width: 100%;
-    max-width: 220px;
-    margin: 0 auto;
-  }
+.landingPage .lmWhyText {
+  margin-top: 8px;
+  max-width: 16ch;
+  font-size: clamp(11px, 2vw, 14px);
+  line-height: 1.35;
 }
 
 @media (max-width: 520px) {
@@ -477,6 +470,34 @@
     transform: scale(0.75) translateX(-11%) translateY(-3%);
   }
 }
+
+@media (max-width: 500px) {
+  .landingPage .lmWhyGrid {
+    gap: 8px;
+  }
+
+  .landingPage .lmWhyCard {
+    padding: 10px 8px 12px;
+    border-radius: 14px;
+  }
+
+  .landingPage .lmWhyIcon {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+
+  .landingPage .lmWhyTitle {
+    font-size: clamp(12px, 2.8vw, 17px);
+    line-height: 1.15;
+  }
+
+  .landingPage .lmWhyText {
+    max-width: 14ch;
+    font-size: clamp(10px, 1.9vw, 12px);
+    line-height: 1.3;
+  }
+}
+
 
 @media (max-width: 460px) {
   .landingPage .lmFeatures {
